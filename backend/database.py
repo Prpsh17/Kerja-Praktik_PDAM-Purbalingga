@@ -26,7 +26,16 @@ def get_unpaid_billing(nolangg: str):
         
     try:
         cursor = connection.cursor(dictionary=True)
-        # Query untuk mengambil tagihan yang belum lunas (TGLLUNAS IS NULL)
+        
+        # 1. Cek apakah nomor pelanggan terdaftar
+        check_user_query = "SELECT nama FROM tbl_pelanggan WHERE nolangg = %s"
+        cursor.execute(check_user_query, (nolangg,))
+        user = cursor.fetchone()
+        
+        if not user:
+            return {"status": "not_found", "message": f"Nomor Pelanggan {nolangg} tidak ditemukan di sistem kami silahkan cek kembali nomer pelanggan anda.", "data": []}
+            
+        # 2. Jika pelanggan ada, cek tagihan yang belum lunas
         query = """
             SELECT p.nama, p.alamat, b.PERIODE, b.M3, b.TOTAL, b.DENDA 
             FROM tbl_pelanggan p
@@ -38,7 +47,7 @@ def get_unpaid_billing(nolangg: str):
         
         # Format the result nicely
         if not result:
-            return {"status": "success", "message": f"Tidak ada tagihan tertunggak untuk nomor pelanggan {nolangg}.", "data": []}
+            return {"status": "success", "message": f"Tidak ada tagihan tertunggak untuk nomor pelanggan {nolangg}.", "data": [], "nama": user["nama"]}
             
         return {"status": "success", "data": result}
         

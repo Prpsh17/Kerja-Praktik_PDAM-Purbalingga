@@ -42,12 +42,12 @@ async def chat_endpoint(request: ChatRequest):
         # Jika ada nomor pelanggan, cari di database
         db_result = get_unpaid_billing(nolangg)
         
-        if db_result and db_result.get("status") == "success":
-            # 3. Generate balasan natural menggunakan Gemini
+        if db_result:
+            # 3. Generate balasan natural (fungsi ini sudah menangani success, not_found, dan error)
             final_reply = generate_billing_response(user_msg, db_result, nolangg)
             return ChatResponse(reply=final_reply, intent=intent)
         else:
-            return ChatResponse(reply="Maaf, terjadi kesalahan saat mengakses database tagihan.", intent=intent)
+            return ChatResponse(reply="Maaf, terjadi kesalahan koneksi saat mengakses database tagihan.", intent=intent)
             
     elif intent == "GENERAL":
         return ChatResponse(reply=reply, intent=intent)

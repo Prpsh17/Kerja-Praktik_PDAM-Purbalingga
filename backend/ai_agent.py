@@ -73,6 +73,10 @@ Output: {"intent": "CEK_TAGIHAN", "nolangg": null}
 CONTOH 7:
 User: "bagaimana cara cek tagihan"
 Output: {"intent": "CEK_TAGIHAN", "nolangg": null}
+
+CONTOH 8:
+User: "lihat tagihan aku dong"
+Output: {"intent": "CEK_TAGIHAN", "nolangg": null}
 """
     
     # Prompting model
@@ -94,7 +98,7 @@ Output: {"intent": "CEK_TAGIHAN", "nolangg": null}
         # Hardcode respons berdasarkan klasifikasi agar 100% akurat dan anti-halusinasi
         if intent == "SAPAAN":
             data["intent"] = "GENERAL"
-            data["reply"] = "Halo! Saya Asisten Virtual PDAM. Silakan ketik nomor pelanggan Anda untuk mengecek tagihan air bulan ini."
+            data["reply"] = "Halo! Saya Asisten Virtual PDAM. Apakah ada yang bisa saya bantu?"
         elif intent == "CARA_BAYAR":
             data["intent"] = "GENERAL"
             data["reply"] = "Untuk pembayaran tagihan air PDAM, Anda bisa menggunakan ATM, Alfamart, Indomaret, Mobile Banking, atau langsung di loket resmi PDAM terdekat."
@@ -104,7 +108,7 @@ Output: {"intent": "CEK_TAGIHAN", "nolangg": null}
         elif intent == "CEK_TAGIHAN":
             if not data.get("nolangg"):
                 data["intent"] = "CEK_TAGIHAN"
-                data["reply"] = "Mohon informasikan Nomor Pelanggan Anda (berupa angka) untuk pengecekan tagihan."
+                data["reply"] = "Mohon masukkan nomer pelanggan anda untuk kami lakukan pengecekan tagihan air anda"
             else:
                 data["reply"] = "Sedang mengecek tagihan..."
                 
@@ -118,38 +122,56 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
     """
     Memformat data tagihan menggunakan kode Python (tanpa AI) agar 100% akurat, instan, dan bebas halusinasi.
     """
+    if billing_data.get("status") == "not_found":
+        return f"Maaf, Nomor Pelanggan **{nolangg}** tidak ditemukan di sistem kami. Harap periksa kembali nomor Anda."
+        
     if billing_data.get("status") != "success":
         return "Maaf, gagal memproses data tagihan dari database."
         
     data_list = billing_data.get("data", [])
     
-    # Jika array data kosong
+    # Jika array data kosong (pelanggan ada, tapi tagihan kosong)
     if not data_list:
-        return f"Hore! Tidak ada tagihan tertunggak untuk nomor pelanggan {nolangg}. Tagihan Anda sudah lunas bulan ini."
+        nama = billing_data.get("nama", "Pelanggan")
+        return f"Hore! Tidak ada tagihan tertunggak untuk Bapak/Ibu {nama} (Nomor: {nolangg}). Tagihan Anda sudah lunas bulan ini."
         
     # Ambil nama dan alamat dari record pertama
     nama = data_list[0].get("nama", "Pelanggan")
     alamat = data_list[0].get("alamat", "-")
+    # Dictionary untuk nama bulan
+    bulan_dict = {
+        "01": "Januari", "02": "Februari", "03": "Maret", "04": "April",
+        "05": "Mei", "06": "Juni", "07": "Juli", "08": "Agustus",
+        "09": "September", "10": "Oktober", "11": "November", "12": "Desember"
+    }
     
     # Rangkai rincian bulan/periode
     rincian = []
     total_semua = 0
     for row in data_list:
-        periode = str(row.get("PERIODE", ""))
-        # Ubah 202606 menjadi Juni 2026 (Opsional, kalau ribet tampilkan saja apa adanya)
+        periode_raw = str(row.get("PERIODE", ""))
+        
+        # Ubah 202606 menjadi Juni 2026
+        if len(periode_raw) == 6:
+            tahun = periode_raw[:4]
+            bulan = periode_raw[4:]
+            periode_str = f"{bulan_dict.get(bulan, bulan)} {tahun}"
+        else:
+            periode_str = periode_raw
+
         total = float(row.get("TOTAL", 0))
         total_semua += total
         # Format angka menjadi rupiah e.g., 89650 -> 89.650
         rupiah_format = f"{total:,.0f}".replace(",", ".")
-        rincian.append(f"• Periode {periode}: Rp {rupiah_format}")
+        rincian.append(f"💧 {periode_str} : Rp {rupiah_format}")
         
     rincian_text = "\n".join(rincian)
     total_format = f"{total_semua:,.0f}".replace(",", ".")
     
-    reply = f"Halo Bpk/Ibu *{nama}*,\n\n"
+    reply = f"Halo Bpk/Ibu {nama},\n"
     reply += f"Berikut rincian tagihan air untuk Nomor Pelanggan {nolangg} ({alamat}):\n\n"
     reply += f"{rincian_text}\n\n"
-    reply += f"**Total Tagihan: Rp {total_format}**\n\n"
-    reply += "Silakan lakukan pembayaran melalui ATM, Alfamart, atau loket resmi terdekat. Terima kasih!"
+    reply += f"💰 Total Tagihan : Rp {total_format}\n\n"
+    reply += "Silakan lakukan pembayaran melalui ATM, Alfamart, atau loket resmi terdekat. Terima kasih! 🙏"
     
     return reply

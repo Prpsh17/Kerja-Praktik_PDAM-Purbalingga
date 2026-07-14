@@ -54,7 +54,7 @@
                     </div>
                     <div>
                         <h1 class="font-semibold text-lg">Asisten PDAM</h1>
-                        <p class="text-xs text-blue-200">Online | Cek Tagihan Air</p>
+                        <p class="text-xs text-blue-200">🟢 Online | Cek Tagihan Air</p>
                     </div>
                 </div>
             </div>

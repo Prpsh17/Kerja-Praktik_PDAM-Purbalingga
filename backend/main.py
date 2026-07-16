@@ -52,6 +52,9 @@ async def chat_endpoint(request: ChatRequest):
     elif intent == "GENERAL":
         return ChatResponse(reply=reply, intent=intent)
         
+    elif intent == "LAPOR_KELUHAN":
+        return ChatResponse(reply=reply, intent=intent)
+        
     elif intent == "ERROR":
         return ChatResponse(reply=reply, intent=intent)
         

@@ -69,6 +69,7 @@ KATEGORI:
 - "CEK_TAGIHAN": Jika user membahas "cek tagihan", "cara cek tagihan", "jumlah tagihan", atau menyebutkan angka nomor pelanggan.
 - "OUT_OF_CONTEXT": Jika pesan SAMA SEKALI TIDAK ADA HUBUNGANNYA dengan PDAM (contoh: politik, presiden, koding, sejarah, matematika, cuaca).
 - "LIHAT_NOMER": Jika user bertanya tentang nomor pelanggan pdam
+- "LAPOR_KELUHAN": Jika user ingin mengadu, mengeluhkan layanan air mati, air keruh, pipa bocor, meteran rusak, atau ingin membuat pengaduan keluhan pelanggan.
 
 Output HANYA boleh berupa JSON murni dengan format:
 {"intent": "NAMA_KATEGORI", "nolangg": "nomor_jika_ada_dan_berupa_angka_atau_null"}
@@ -112,8 +113,20 @@ Output: {"intent": "LIHAT_NOMER", "nolangg": null}
 CONTOH 10:
 User: "nomor pdam bisa dilihat di mana?"
 Output: {"intent": "LIHAT_NOMER", "nolangg": null}
+
+CONTOH 11:
+User: "air di rumah saya mati sudah 3 hari"
+Output: {"intent": "LAPOR_KELUHAN", "nolangg": null}
+
+CONTOH 12:
+User: "saya mau melaporkan keluhan pelanggan"
+Output: {"intent": "LAPOR_KELUHAN", "nolangg": null}
+
+CONTOH 13:
+User: "air pdam keruh dan kotor sekali"
+Output: {"intent": "LAPOR_KELUHAN", "nolangg": null}
 """
-       # Prompting model untuk klasifikasi
+    # Prompting model untuk klasifikasi
     text_response = call_ollama(prompt=user_message, system_prompt=system_instruction)
     
     if text_response is None:
@@ -166,11 +179,18 @@ Output: {"intent": "LIHAT_NOMER", "nolangg": null}
             intent = "CARA_BAYAR"
         elif "SAPAAN" in upper_resp:
             intent = "SAPAAN"
+        elif "LAPOR_KELUHAN" in upper_resp or "COMPLAINT" in upper_resp:
+            intent = "LAPOR_KELUHAN"
+
+    # Fallback tambahan berbasis kata kunci langsung dari input user untuk lapor keluhan
+    user_msg_upper = user_message.upper()
+    if any(keyword in user_msg_upper for keyword in ["LAPOR", "KELUHAN", "ADUAN", "KOMPLAIN", "MATI", "KERUH", "BOCOR", "RUSAK"]):
+        intent = "LAPOR_KELUHAN"
 
     # Fallback 2: Cari nomor pelanggan (8 digit angka) dari pesan user secara mandiri
     # Ini sangat aman karena regex lebih terpercaya dibanding AI mengekstrak angka
     num_match = re.search(r'\b\d{8,}\b', user_message)
-    if num_match:
+    if num_match and intent != "LAPOR_KELUHAN":
         nolangg = num_match.group(0)
         # Jika ada nomor pelanggan, pastikan intent dipaksa ke CEK_TAGIHAN
         intent = "CEK_TAGIHAN"
@@ -192,6 +212,9 @@ Output: {"intent": "LIHAT_NOMER", "nolangg": null}
         elif intent == "LIHAT_NOMER":
             data["intent"] = "GENERAL"
             data["reply"] = generate_general_response(user_message, "LIHAT_NOMER")
+        elif intent == "LAPOR_KELUHAN":
+            data["intent"] = "LAPOR_KELUHAN"
+            data["reply"] = "Memulai alur pelaporan keluhan pelanggan..."
         elif intent == "CEK_TAGIHAN":
             if not data.get("nolangg"):
                 data["intent"] = "CEK_TAGIHAN"
@@ -255,7 +278,8 @@ def generate_general_response(user_message: str, intent: str) -> str:
         "3. Maksimal 3 kalimat — jangan bertele-tele.\n"
         "4. Gunakan emoji 1-2 saja, jangan berlebihan.\n"
         "5. JANGAN ulangi kata atau frasa yang sama dalam satu balasan.\n"
-        "6. JANGAN menawarkan atau menyarankan topik yang tidak berhubungan dengan PDAM."
+        "6. JANGAN menawarkan atau menyarankan topik yang tidak berhubungan dengan PDAM.\n"
+        "7. JANGAN mencantumkan alamat kantor, nomor telepon, email, atau kontak layanan pelanggan jika tidak diberikan di dalam data/instruksi."
     )
 
     prompt = (
@@ -300,7 +324,8 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
             "ATURAN WAJIB:\n"
             "1. Sampaikan informasi dengan sopan dalam Bahasa Indonesia.\n"
             "2. DILARANG KERAS menulis menggunakan Bahasa Mandarin/Cina.\n"
-            "3. Gunakan emoji secukupnya."
+            "3. Gunakan emoji secukupnya.\n"
+            "4. JANGAN mencantumkan alamat kantor, nomor telepon, email, atau kontak layanan pelanggan palsu/fiktif."
         )
         prompt = (
             f"Nomor pelanggan {nolangg} tidak ditemukan di database PDAM Purbalingga.\n"
@@ -384,9 +409,10 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
         "1. Gunakan PERSIS angka yang ada di data — JANGAN ubah, tambah, atau kurangi angka apapun.\n"
         "2. Tampilkan semua rincian periode yang ada di data.\n"
         "3. Gunakan Bahasa Indonesia yang hangat dan profesional.\n"
-        "4. DILARANG KERAS menulis dalam Bahasa Mandarin/Cina/Inggris.\n"
+        "4. DILARANG KERAS menulis dalam Bahasa lain selain Bahasa Indonesia.\n"
         "5. Akhiri dengan informasi cara pembayaran.\n"
-        "6. Gunakan emoji secukupnya agar terasa ramah."
+        "6. Gunakan emoji secukupnya agar terasa ramah.\n"
+        "7. JANGAN mencantumkan alamat kantor, nomor telepon, email, atau kontak layanan pelanggan jika tidak diberikan di dalam data."
     )
 
     prompt = (

@@ -427,7 +427,11 @@
         <!-- Widget Header -->
         <div class="bg-gradient-to-r from-pdam-blue to-pdam-bluelight px-4 py-3.5 text-white flex items-center justify-between shadow-md">
             <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 bg-white text-pdam-blue rounded-full flex items-center justify-center font-black text-lg shadow-sm">
+                <!-- Tombol Kembali, disembunyikan di dashboard -->
+                <button id="btn-back-to-menu" onclick="showDashboard()" class="hidden w-7 h-7 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors text-white focus:outline-none mr-0.5">
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
+                </button>
+                <div class="w-9 h-9 bg-white text-pdam-blue rounded-full flex items-center justify-center font-black text-lg shadow-sm shrink-0">
                     P
                 </div>
                 <div>
@@ -441,9 +445,71 @@
                 <i class="fa-solid fa-xmark text-sm"></i>
             </button>
         </div>
+
+        <!-- Menu / Dashboard Area -->
+        <div id="chat-dashboard" class="flex-1 p-5 overflow-y-auto bg-slate-50 flex flex-col justify-between chat-scroll">
+            <div class="space-y-4">
+                <!-- Welcome text -->
+                <div class="text-center py-2">
+                    <h4 class="font-extrabold text-slate-800 text-sm">Selamat Datang di PDAM Purbalingga</h4>
+                    <p class="text-slate-500 text-[11px] mt-1">Silakan pilih layanan yang Anda butuhkan di bawah ini:</p>
+                </div>
+                
+                <!-- Quick Action Buttons -->
+                <div class="space-y-2.5">
+                    <button onclick="selectDashboardMenu('cek_tagihan')" class="w-full text-left bg-white hover:bg-slate-100 border border-slate-200 hover:border-pdam-blue text-slate-700 p-3 rounded-xl transition-all duration-200 flex items-center space-x-3 shadow-sm group focus:outline-none">
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 text-pdam-blue flex items-center justify-center group-hover:bg-pdam-blue group-hover:text-white transition-colors duration-200 shrink-0">
+                            <i class="fa-solid fa-file-invoice-dollar text-sm"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-bold text-slate-800">Cek Tagihan Air</p>
+                            <p class="text-[10px] text-slate-400 truncate">Lihat tunggakan tagihan rekening air Anda</p>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-[10px] text-slate-350 group-hover:text-pdam-blue transition-colors shrink-0"></i>
+                    </button>
+                    
+                    <button onclick="selectDashboardMenu('lapor_keluhan')" class="w-full text-left bg-white hover:bg-slate-100 border border-slate-200 hover:border-pdam-blue text-slate-700 p-3 rounded-xl transition-all duration-200 flex items-center space-x-3 shadow-sm group focus:outline-none">
+                        <div class="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-colors duration-200 shrink-0">
+                            <i class="fa-solid fa-bullhorn text-sm"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-bold text-slate-800">Laporkan Keluhan Layanan</p>
+                            <p class="text-[10px] text-slate-400 truncate">Adukan kendala air mati, pipa bocor, dll</p>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-[10px] text-slate-350 group-hover:text-pdam-blue transition-colors shrink-0"></i>
+                    </button>
+                    
+                    <button onclick="selectDashboardMenu('cek_status')" class="w-full text-left bg-white hover:bg-slate-100 border border-slate-200 hover:border-pdam-blue text-slate-700 p-3 rounded-xl transition-all duration-200 flex items-center space-x-3 shadow-sm group focus:outline-none">
+                        <div class="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-colors duration-200 shrink-0">
+                            <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-bold text-slate-800">Cek Status Laporan</p>
+                            <p class="text-[10px] text-slate-400 truncate">Pantau perkembangan tindak lanjut keluhan Anda</p>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-[10px] text-slate-350 group-hover:text-pdam-blue transition-colors shrink-0"></i>
+                    </button>
+                    
+                    <button onclick="selectDashboardMenu('chat_bebas')" class="w-full text-left bg-white hover:bg-slate-100 border border-slate-200 hover:border-pdam-blue text-slate-700 p-3 rounded-xl transition-all duration-200 flex items-center space-x-3 shadow-sm group focus:outline-none">
+                        <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors duration-200 shrink-0">
+                            <i class="fa-solid fa-comments text-sm"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-bold text-slate-800">Tanya Asisten (Chat Bebas)</p>
+                            <p class="text-[10px] text-slate-400 truncate">Mengobrol langsung dengan AI Agent kami</p>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-[10px] text-slate-350 group-hover:text-pdam-blue transition-colors shrink-0"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Footer brand / small note inside widget -->
+            <div class="text-center pt-3 border-t border-slate-150 shrink-0">
+                <span class="text-[9px] text-slate-400 font-medium">Perumda Air Minum Tirta Perwira</span>
+            </div>
+        </div>
         
         <!-- Message Area -->
-        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto bg-slate-50 space-y-4 chat-scroll">
+        <div id="chat-messages" class="hidden flex-1 p-4 overflow-y-auto bg-slate-50 space-y-4 chat-scroll">
             <!-- Bot Initial Message -->
             <div class="flex">
                 <div class="bg-white border border-gray-150 text-slate-700 rounded-2xl rounded-tl-none py-2.5 px-4 max-w-[85%] shadow-sm text-xs leading-relaxed">
@@ -472,7 +538,7 @@
         </div>
         
         <!-- Input Area -->
-        <div class="p-3.5 bg-white border-t border-gray-100">
+        <div id="chat-input-area" class="hidden p-3.5 bg-white border-t border-gray-100">
             <form id="chat-form" class="flex items-center space-x-2">
                 <input 
                     type="text" 
@@ -504,22 +570,70 @@
         const chatMessages = document.getElementById('chat-messages');
         const typingIndicator = document.getElementById('typing-indicator');
 
+        // Elemen UI Baru untuk Dashboard & Navigasi
+        const chatDashboard = document.getElementById('chat-dashboard');
+        const chatInputArea = document.getElementById('chat-input-area');
+        const btnBackToMenu = document.getElementById('btn-back-to-menu');
+
         // URL API ke FastAPI Python Backend Anda
         const API_URL = 'http://localhost:8001/api/chat';
         
         // URL Webhook n8n Anda
         const N8N_WEBHOOK_URL = 'https://glandular-thrash-mutable.ngrok-free.dev/webhook-test/28b42cd8-5b7e-4773-b3b6-d96cef432bdd';
+        const N8N_STATUS_WEBHOOK_URL = 'https://glandular-thrash-mutable.ngrok-free.dev/webhook-test/cek-status';
 
         let isOpen = false;
         
         // State Machine untuk Pelaporan Keluhan Lokal
-        let reportState = 'NORMAL'; // NORMAL, WAITING_NAME, WAITING_ADDRESS, WAITING_PHONE, WAITING_COMPLAINT
+        let reportState = 'NORMAL'; // NORMAL, WAITING_NAME, WAITING_ADDRESS, WAITING_PHONE, WAITING_COMPLAINT, WAITING_TICKET_STATUS
         let reportData = {
             nama: '',
             alamat: '',
             hp: '',
             keluhan: ''
         };
+
+        // Menampilkan Menu Utama (Dashboard)
+        function showDashboard() {
+            chatDashboard.classList.remove('hidden');
+            chatMessages.classList.add('hidden');
+            chatInputArea.classList.add('hidden');
+            btnBackToMenu.classList.add('hidden');
+            
+            messageInput.value = '';
+            reportState = 'NORMAL';
+        }
+
+        // Menampilkan Area Percakapan Aktif
+        function showChatArea(initialGreeting) {
+            chatDashboard.classList.add('hidden');
+            chatMessages.classList.remove('hidden');
+            chatInputArea.classList.remove('hidden');
+            btnBackToMenu.classList.remove('hidden');
+            
+            chatMessages.innerHTML = '';
+            
+            if (initialGreeting) {
+                appendMessage(initialGreeting, false);
+            }
+            
+            setTimeout(() => messageInput.focus(), 100);
+        }
+
+        // Pemicu Klik Menu Dashboard
+        function selectDashboardMenu(menuType) {
+            if (menuType === 'cek_tagihan') {
+                showChatArea("💳 **Cek Tagihan Air**\n\nSilakan masukkan **Nomor Pelanggan** Anda (8 digit) untuk mengecek tagihan rekening air:");
+            } else if (menuType === 'lapor_keluhan') {
+                showChatArea();
+                startLocalLaporFlow();
+            } else if (menuType === 'cek_status') {
+                showChatArea("🔍 **Cek Status Laporan Keluhan**\n\nSilakan masukkan **Nomor Tiket Laporan** Anda (contoh: 19122021-1):");
+                reportState = 'WAITING_TICKET_STATUS';
+            } else if (menuType === 'chat_bebas') {
+                showChatArea("💬 **Tanya Asisten Virtual (Chat Bebas)**\n\nHalo! Saya adalah Asisten Virtual PDAM Purbalingga. Ada yang bisa saya bantu terkait layanan air atau tagihan? Silakan tanyakan di bawah ini.");
+            }
+        }
 
         // Toggle Chat Widget (Buka / Tutup)
         function toggleChatWidget() {
@@ -532,8 +646,8 @@
                 // Ganti Icon FAB menjadi Silang
                 fabIcon.className = 'fa-solid fa-xmark text-2xl';
                 
-                // Focus ke input field
-                setTimeout(() => messageInput.focus(), 100);
+                // Selalu buka menu utama dashboard saat pertama dibuka
+                showDashboard();
             } else {
                 // Sembunyikan Widget
                 chatWidget.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
@@ -546,9 +660,20 @@
 
         // Buka chat dan isi input dengan query tertentu
         function openChatWithQuery(query) {
-            if (!isOpen) toggleChatWidget();
-            messageInput.value = query;
-            messageInput.focus();
+            if (!isOpen) {
+                isOpen = true;
+                chatWidget.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+                chatWidget.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                fabIcon.className = 'fa-solid fa-xmark text-2xl';
+            }
+            
+            if (query === 'cek tagihan') {
+                selectDashboardMenu('cek_tagihan');
+            } else {
+                showChatArea("💬 **Tanya Asisten Virtual (Chat Bebas)**");
+                messageInput.value = query;
+                messageInput.focus();
+            }
         }
 
         // Mulai alur keluhan lokal
@@ -566,7 +691,13 @@
 
         // Jalankan alur keluhan otomatis jika user menekan tombol pengaduan
         function openLaporFlow() {
-            if (!isOpen) toggleChatWidget();
+            if (!isOpen) {
+                isOpen = true;
+                chatWidget.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+                chatWidget.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                fabIcon.className = 'fa-solid fa-xmark text-2xl';
+            }
+            showChatArea();
             startLocalLaporFlow();
         }
 
@@ -618,14 +749,74 @@
             
             // Cek jika user membatalkan alur pengaduan
             if (reportState !== 'NORMAL' && message.toLowerCase() === 'batal') {
-                reportState = 'NORMAL';
-                reportData = { nama: '', alamat: '', hp: '', keluhan: '' };
-                appendMessage("❌ Alur pelaporan telah dibatalkan. Bot kembali ke mode normal.", false);
+                showDashboard();
+                appendMessage("❌ Alur saat ini telah dibatalkan. Kembali ke menu utama.", false);
                 return;
             }
 
             // 2. State Machine Pengaduan (Lokal)
             if (reportState !== 'NORMAL') {
+                if (reportState === 'WAITING_TICKET_STATUS') {
+                    const ticketNumber = message;
+                    reportState = 'NORMAL';
+                    showTyping();
+                    
+                    try {
+                        const response = await fetch(N8N_STATUS_WEBHOOK_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ ticket_number: ticketNumber })
+                        });
+                        
+                        hideTyping();
+                        
+                        if (response.ok) {
+                            let data = await response.json();
+                            
+                            // Jika respons n8n dibungkus dalam array, ambil objek pertama
+                            if (Array.isArray(data) && data.length > 0) {
+                                data = data[0];
+                            }
+                            
+                            const statusId = data.status_id;
+                            let statusText = "Sedang Diproses ⏳";
+                            if (statusId == 1) {
+                                statusText = "Dilaporkan 📝";
+                            } else if (statusId == 2) {
+                                statusText = "Pengecekan 🔍";
+                            } else if (statusId == 3) {
+                                statusText = "Pengerjaan 🛠️";
+                            } else if (statusId == 4) {
+                                statusText = "Selesai / Teratasi ✅";
+                            } else if (statusId === null || statusId === undefined || statusId === '') {
+                                statusText = "Tidak Ditemukan ❌";
+                            }
+                            const msgText = data.message || "Laporan Anda sedang berada dalam penanganan oleh tim teknis kami.";
+                            
+                            appendMessage(
+                                `🔍 **Hasil Pelacakan Laporan Keluhan**\n\n` +
+                                `• Nomor Laporan: **${ticketNumber}**\n` +
+                                `• Status: **${statusText}**\n\n` +
+                                `${msgText}`,
+                                false
+                            );
+                        } else {
+                            throw new Error("Gagal mengambil data dari n8n");
+                        }
+                    } catch (error) {
+                        console.error("Error fetching status from n8n:", error);
+                        hideTyping();
+                        appendMessage(
+                            `⚠️ **Sistem Pelacakan Sedang Gangguan**\n\n` +
+                            `Maaf, sistem pelacakan status keluhan saat ini sedang offline atau mengalami gangguan. Mohon mencoba kembali beberapa saat lagi.`,
+                            false
+                        );
+                    }
+                    return;
+                }
+
                 if (reportState === 'WAITING_NAME') {
                     reportData.nama = message;
                     reportState = 'WAITING_ADDRESS';

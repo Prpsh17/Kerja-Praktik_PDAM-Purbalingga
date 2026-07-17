@@ -585,7 +585,7 @@
         let isOpen = false;
         
         // State Machine untuk Pelaporan Keluhan Lokal
-        let reportState = 'NORMAL'; // NORMAL, WAITING_NAME, WAITING_ADDRESS, WAITING_PHONE, WAITING_COMPLAINT, WAITING_TICKET_STATUS
+        let reportState = 'NORMAL'; // NORMAL, WAITING_NAME, WAITING_ADDRESS, WAITING_PHONE, WAITING_COMPLAINT, WAITING_TICKET_STATUS, WAITING_BILL_CHECK
         let reportData = {
             nama: '',
             alamat: '',
@@ -602,6 +602,7 @@
             
             messageInput.value = '';
             reportState = 'NORMAL';
+            enableChatInput();
         }
 
         // Menampilkan Area Percakapan Aktif
@@ -612,6 +613,7 @@
             btnBackToMenu.classList.remove('hidden');
             
             chatMessages.innerHTML = '';
+            enableChatInput();
             
             if (initialGreeting) {
                 appendMessage(initialGreeting, false);
@@ -623,15 +625,16 @@
         // Pemicu Klik Menu Dashboard
         function selectDashboardMenu(menuType) {
             if (menuType === 'cek_tagihan') {
-                showChatArea("💳 **Cek Tagihan Air**\n\nSilakan masukkan **Nomor Pelanggan** Anda (8 digit) untuk mengecek tagihan rekening air:");
+                showChatArea("💳 **Cek Tagihan Air**\n\nSilakan masukkan **Nomor Pelanggan** Anda (8 digit) untuk mengecek tagihan rekening air:\n\nKetik **\"batal\"** untuk kembali ke menu utama.");
+                reportState = 'WAITING_BILL_CHECK';
             } else if (menuType === 'lapor_keluhan') {
                 showChatArea();
                 startLocalLaporFlow();
             } else if (menuType === 'cek_status') {
-                showChatArea("🔍 **Cek Status Laporan Keluhan**\n\nSilakan masukkan **Nomor Tiket Laporan** Anda (contoh: 19122021-1):");
+                showChatArea("🔍 **Cek Status Laporan Keluhan**\n\nSilakan masukkan **Nomor Tiket Laporan** Anda (contoh: 19122021-1):\n Pastikan penulisan nomor tiket benar.\n\nKetik **\"batal\"** untuk kembali ke menu utama.");
                 reportState = 'WAITING_TICKET_STATUS';
             } else if (menuType === 'chat_bebas') {
-                showChatArea("💬 **Tanya Asisten Virtual (Chat Bebas)**\n\nHalo! Saya adalah Asisten Virtual PDAM Purbalingga. Ada yang bisa saya bantu terkait layanan air atau tagihan? Silakan tanyakan di bawah ini.");
+                showChatArea("💬 **Tanya Asisten Virtual**\n\nHalo! Saya adalah Asisten Virtual PDAM Purbalingga. Ada yang bisa saya bantu terkait layanan air atau tagihan? Silakan tanyakan di bawah ini.");
             }
         }
 
@@ -676,9 +679,38 @@
             }
         }
 
+        function disableChatInput() {
+            messageInput.disabled = true;
+            messageInput.placeholder = "Silakan isi formulir keluhan di atas...";
+            messageInput.classList.remove('bg-slate-50', 'focus:bg-white', 'focus:ring-2', 'focus:ring-pdam-blue');
+            messageInput.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+            
+            const submitBtn = chatForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.classList.remove('bg-pdam-blue', 'hover:bg-pdam-bluelight');
+                submitBtn.classList.add('bg-slate-300', 'cursor-not-allowed', 'opacity-60');
+            }
+        }
+
+        function enableChatInput() {
+            messageInput.disabled = false;
+            messageInput.placeholder = "Ketik pesan di sini...";
+            messageInput.classList.remove('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+            messageInput.classList.add('bg-slate-50', 'focus:bg-white');
+            
+            const submitBtn = chatForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('bg-slate-300', 'cursor-not-allowed', 'opacity-60');
+                submitBtn.classList.add('bg-pdam-blue', 'hover:bg-pdam-bluelight');
+            }
+        }
+
         // Mulai alur keluhan lokal dengan menampilkan formulir langsung
         function startLocalLaporFlow() {
             reportState = 'NORMAL';
+            disableChatInput();
             
             const formId = 'lapor-form-' + Date.now();
             const formHtml = `
@@ -739,6 +771,7 @@
                     <i class="fa-solid fa-circle-xmark"></i> Pengisian formulir laporan dibatalkan.
                 </div>
             `;
+            enableChatInput();
         }
 
         async function handleFormLaporSubmit(event, formId) {
@@ -789,6 +822,7 @@
                             <p class="text-[10px] text-gray-400 mt-2 leading-snug">Simpan nomor tiket ini untuk melacak status penanganan keluhan Anda. Terima kasih! 🙏</p>
                         </div>
                     `;
+                    enableChatInput();
                 } else {
                     throw new Error("Gagal menyimpan ke server");
                 }
@@ -853,6 +887,7 @@
         // Handle Pengiriman Pesan Form
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (messageInput.disabled) return;
             const message = messageInput.value.trim();
             if (!message) return;
 
@@ -871,7 +906,6 @@
             if (reportState !== 'NORMAL') {
                 if (reportState === 'WAITING_TICKET_STATUS') {
                     const ticketNumber = message;
-                    reportState = 'NORMAL';
                     showTyping();
                     
                     try {
@@ -912,7 +946,9 @@
                                 `🔍 **Hasil Pelacakan Laporan Keluhan**\n\n` +
                                 `• Nomor Laporan: **${ticketNumber}**\n` +
                                 `• Status: **${statusText}**\n\n` +
-                                `${msgText}`,
+                                `${msgText}\n\n` +
+                                `---\n` +
+                                `Silakan masukkan **Nomor Tiket Laporan** lainnya untuk mengecek kembali, atau ketik **"batal"** untuk kembali ke menu utama.`,
                                 false
                             );
                         } else {
@@ -924,6 +960,59 @@
                         appendMessage(
                             `⚠️ **Sistem Pelacakan Sedang Gangguan**\n\n` +
                             `Maaf, sistem pelacakan status keluhan saat ini sedang offline atau mengalami gangguan. Mohon mencoba kembali beberapa saat lagi.`,
+                            false
+                        );
+                    }
+                    return;
+                } else if (reportState === 'WAITING_BILL_CHECK') {
+                    // Bersihkan spasi jika ada
+                    const cleanMsg = message.replace(/\s+/g, '');
+                    // Validasi: cari minimal 8 digit angka
+                    const numMatch = cleanMsg.match(/\b\d{8,}\b/);
+                    
+                    if (!numMatch) {
+                        appendMessage(
+                            `⚠️ **Format Salah**\n\n` +
+                            `Nomor pelanggan harus berupa angka minimal 8 digit.\n` +
+                            `Silakan masukkan **Nomor Pelanggan** Anda kembali, atau ketik **"batal"** untuk kembali ke menu utama.`,
+                            false
+                        );
+                        return;
+                    }
+                    
+                    const noPelanggan = numMatch[0];
+                    showTyping();
+                    
+                    try {
+                        // Kirim pesan dengan format cek tagihan ke API FastAPI
+                        const response = await fetch(API_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ message: "cek tagihan " + noPelanggan })
+                        });
+
+                        const data = await response.json();
+                        hideTyping();
+                        
+                        if (data && data.reply) {
+                            appendMessage(
+                                `${data.reply}\n\n` +
+                                `---\n` +
+                                `Silakan masukkan **Nomor Pelanggan** lainnya untuk mengecek kembali, atau ketik **"batal"** untuk kembali ke menu utama.`,
+                                false
+                            );
+                        } else {
+                            appendMessage("Maaf, format respons dari server tidak dikenali.", false);
+                        }
+                    } catch (error) {
+                        console.error("Error checking bill from backend:", error);
+                        hideTyping();
+                        appendMessage(
+                            `⚠️ **Koneksi Bermasalah**\n\n` +
+                            `Gagal menghubungkan ke database tagihan. Silakan cek koneksi backend Anda.`,
                             false
                         );
                     }

@@ -8,11 +8,12 @@ FAQ_LIST = [
         "question": "Bagaimana cara mendaftar pasang baru sambungan PDAM?",
         "answer": (
             "Untuk mendaftar sambungan baru PDAM Purbalingga, Anda perlu melengkapi persyaratan berikut:\n"
-            "1. Fotokopi KTP calon pelanggan (1 lembar).\n"
-            "2. Fotokopi rekening air tetangga terdekat.\n"
-            "3. Stopmap dan denah lokasi rumah.\n"
-            "4. Mengisi formulir pendaftaran di kantor PDAM terdekat.\n"
-            "5. Membayar biaya pendaftaran dan administrasi setelah disurvei petugas."
+            "1. Mengisi Surat Permohonan Pelanggan. \n"
+            "2. Meterai Rp 10.000.\n"
+            "3. Fotokopi KTP Pemohon yang masih berlaku\n"
+            "4. Fotokopi Kartu Keluarga.\n"
+            "5. Mendownload dan mengisi formulir SPL PDAM 2025\n"
+            "pdampurbalingga.co.id/layanan/pemasangan-sambungan-baru"
         )
     },
     {

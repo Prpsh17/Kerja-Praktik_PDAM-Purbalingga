@@ -23,6 +23,16 @@ class ChatResponse(BaseModel):
     reply: str
     intent: str
 
+class ComplaintRequest(BaseModel):
+    ComplianerName: str
+    ComplianerAddress: str
+    PhoneNumber: str
+    CompliantContent: str
+    InputedBy: str = "web_chatbot"
+
+class StatusRequest(BaseModel):
+    ticket_number: str
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     user_msg = request.message
@@ -60,6 +70,52 @@ async def chat_endpoint(request: ChatRequest):
         
     else:
         return ChatResponse(reply=reply if reply else "Maaf, saya tidak mengerti maksud Anda.", intent=intent)
+
+@app.post("/api/complaints")
+async def create_complaint_endpoint(request: ComplaintRequest):
+    from database import create_complaint
+    ticket = create_complaint(
+        request.ComplianerName,
+        request.ComplianerAddress,
+        request.PhoneNumber,
+        request.CompliantContent,
+        request.InputedBy
+    )
+    if ticket:
+        return {"status": "success", "ticket_number": ticket}
+    else:
+        raise HTTPException(status_code=500, detail="Gagal menyimpan laporan keluhan.")
+
+@app.post("/api/complaints/status")
+async def check_status_endpoint(request: StatusRequest):
+    from database import get_complaint_status
+    result = get_complaint_status(request.ticket_number)
+    if result:
+        status_id = result.get("CompliantStatusId")
+        status_name = "Dilaporkan"
+        message = "Laporan Anda telah kami terima dan masuk dalam antrean sistem."
+        
+        if status_id == 2:
+            status_name = "Pengecekan"
+            message = "Petugas teknis kami sedang melakukan pengecekan di lokasi."
+        elif status_id == 3:
+            status_name = "Pengerjaan"
+            message = "Laporan Anda sedang dalam proses perbaikan/pengerjaan oleh petugas lapangan."
+        elif status_id == 4:
+            status_name = "Selesai"
+            message = "Laporan Anda sudah diselesaikan oleh petugas lapangan. Terima kasih."
+            
+        return {
+            "status_id": status_id,
+            "status_name": status_name,
+            "message": message
+        }
+    else:
+        return {
+            "status_id": None,
+            "status_name": "Tidak Ditemukan",
+            "message": "Nomor laporan tidak ditemukan. Silakan periksa kembali nomor tiket Anda."
+        }
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

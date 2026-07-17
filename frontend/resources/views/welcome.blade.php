@@ -578,9 +578,9 @@
         // URL API ke FastAPI Python Backend Anda
         const API_URL = 'http://localhost:8001/api/chat';
         
-        // URL Webhook n8n Anda
-        const N8N_WEBHOOK_URL = 'https://glandular-thrash-mutable.ngrok-free.dev/webhook-test/28b42cd8-5b7e-4773-b3b6-d96cef432bdd';
-        const N8N_STATUS_WEBHOOK_URL = 'https://glandular-thrash-mutable.ngrok-free.dev/webhook-test/cek-status';
+        // URL API ke FastAPI Python Backend Anda
+        const COMPLAINT_API_URL = 'http://localhost:8001/api/complaints';
+        const STATUS_API_URL = 'http://localhost:8001/api/complaints/status';
 
         let isOpen = false;
         
@@ -676,17 +676,130 @@
             }
         }
 
-        // Mulai alur keluhan lokal
+        // Mulai alur keluhan lokal dengan menampilkan formulir langsung
         function startLocalLaporFlow() {
-            reportState = 'WAITING_NAME';
-            reportData = { nama: '', alamat: '', hp: '', keluhan: '' };
-            appendMessage(
-                "📝 **Formulir Pengaduan Keluhan Pelanggan**\n\n" +
-                "Silakan ikuti instruksi berikut untuk mengirim keluhan.\n" +
-                "*(Ketik 'batal' kapan saja untuk membatalkan)*\n\n" +
-                "Silakan masukkan **Nama Lengkap** Anda:",
-                false
-            );
+            reportState = 'NORMAL';
+            
+            const formId = 'lapor-form-' + Date.now();
+            const formHtml = `
+                <div class="p-1.5 text-slate-700 bg-white">
+                    <h4 class="font-bold text-xs mb-1.5 text-pdam-blue flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-invoice"></i> Formulir Pengaduan Keluhan
+                    </h4>
+                    <p class="text-[10px] text-gray-500 mb-2.5 leading-snug">Silakan isi formulir resmi berikut untuk mengirimkan pengaduan ke database PDAM Purbalingga.</p>
+                    <form id="${formId}" class="space-y-2" onsubmit="handleFormLaporSubmit(event, '${formId}')">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Nama Lengkap</label>
+                            <input type="text" name="nama" required class="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-pdam-blue" placeholder="Contoh: Budi Susanto">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Alamat Lengkap</label>
+                            <input type="text" name="alamat" required class="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-pdam-blue" placeholder="Contoh: RT 02/RW 04, Purbalingga Kidul">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Nomor HP / WhatsApp</label>
+                            <input type="text" name="hp" required class="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-pdam-blue" placeholder="Contoh: 08123456789">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Detail Keluhan</label>
+                            <textarea name="keluhan" required rows="3" class="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-pdam-blue resize-none" placeholder="Contoh: Air mati sejak kemarin sore..."></textarea>
+                        </div>
+                        <div class="pt-1 flex gap-2">
+                            <button type="submit" class="flex-1 bg-pdam-blue hover:bg-blue-600 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-paper-plane"></i> Kirim Laporan
+                            </button>
+                            <button type="button" onclick="cancelFormLapor(this)" class="bg-gray-100 hover:bg-gray-200 text-gray-500 font-semibold py-1.5 px-3 rounded-lg text-xs transition-colors">
+                                Batal
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            
+            appendRawHtmlMessage(formHtml);
+        }
+
+        function appendRawHtmlMessage(html) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex justify-start';
+            
+            const innerDiv = document.createElement('div');
+            innerDiv.className = 'bg-white border border-gray-200 text-slate-700 rounded-2xl rounded-tl-none py-3 px-4 w-[90%] shadow-sm text-xs leading-relaxed';
+            innerDiv.innerHTML = html;
+            
+            messageDiv.appendChild(innerDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function cancelFormLapor(btn) {
+            const container = btn.closest('form').parentNode;
+            container.innerHTML = `
+                <div class="text-slate-400 italic text-xs py-1 flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-xmark"></i> Pengisian formulir laporan dibatalkan.
+                </div>
+            `;
+        }
+
+        async function handleFormLaporSubmit(event, formId) {
+            event.preventDefault();
+            const form = document.getElementById(formId);
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const cancelBtn = form.querySelector('button[type="button"]');
+            
+            // Ubah button state jadi loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            
+            const formData = new FormData(form);
+            const payload = {
+                "ComplianerName": formData.get('nama'),
+                "ComplianerAddress": formData.get('alamat'),
+                "PhoneNumber": formData.get('hp'),
+                "CompliantContent": formData.get('keluhan'),
+                "InputedBy": "web_chatbot"
+            };
+            
+            showTyping();
+            
+            try {
+                const response = await fetch(COMPLAINT_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                hideTyping();
+                
+                if (response.ok) {
+                    const resData = await response.json();
+                    const ticketNum = resData.ticket_number;
+                    form.parentNode.innerHTML = `
+                        <div class="text-center py-2 text-slate-700">
+                            <div class="text-emerald-500 text-2xl mb-1"><i class="fa-solid fa-circle-check"></i></div>
+                            <h5 class="font-bold text-xs text-emerald-600 mb-1">Laporan Keluhan Terkirim!</h5>
+                            <p class="text-[10px] text-gray-500 mb-2 leading-relaxed">Keluhan Anda telah dicatat oleh sistem dengan nomor tiket:</p>
+                            <div class="inline-block bg-emerald-50 text-emerald-700 font-bold px-3 py-1.5 rounded-lg border border-emerald-200 text-xs tracking-wider select-all mb-1">
+                                ${ticketNum}
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-2 leading-snug">Simpan nomor tiket ini untuk melacak status penanganan keluhan Anda. Terima kasih! 🙏</p>
+                        </div>
+                    `;
+                } else {
+                    throw new Error("Gagal menyimpan ke server");
+                }
+            } catch (error) {
+                console.error("Error submitting complaint:", error);
+                hideTyping();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Laporan';
+                if (cancelBtn) cancelBtn.style.display = 'inline-block';
+                alert("Gagal mengirim laporan keluhan. Silakan cek koneksi server backend Anda.");
+            }
         }
 
         // Jalankan alur keluhan otomatis jika user menekan tombol pengaduan
@@ -762,7 +875,7 @@
                     showTyping();
                     
                     try {
-                        const response = await fetch(N8N_STATUS_WEBHOOK_URL, {
+                        const response = await fetch(STATUS_API_URL, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -775,7 +888,7 @@
                         if (response.ok) {
                             let data = await response.json();
                             
-                            // Jika respons n8n dibungkus dalam array, ambil objek pertama
+                            // Jika respons dibungkus dalam array, ambil objek pertama
                             if (Array.isArray(data) && data.length > 0) {
                                 data = data[0];
                             }
@@ -803,10 +916,10 @@
                                 false
                             );
                         } else {
-                            throw new Error("Gagal mengambil data dari n8n");
+                            throw new Error("Gagal mengambil data dari backend");
                         }
                     } catch (error) {
-                        console.error("Error fetching status from n8n:", error);
+                        console.error("Error fetching status from backend:", error);
                         hideTyping();
                         appendMessage(
                             `⚠️ **Sistem Pelacakan Sedang Gangguan**\n\n` +
@@ -814,90 +927,6 @@
                             false
                         );
                     }
-                    return;
-                }
-
-                if (reportState === 'WAITING_NAME') {
-                    reportData.nama = message;
-                    reportState = 'WAITING_ADDRESS';
-                    showTyping();
-                    setTimeout(() => {
-                        hideTyping();
-                        appendMessage("📍 Terima kasih. Sekarang masukkan **Alamat Lengkap** Anda:", false);
-                    }, 500);
-                    return;
-                }
-                
-                if (reportState === 'WAITING_ADDRESS') {
-                    reportData.alamat = message;
-                    reportState = 'WAITING_PHONE';
-                    showTyping();
-                    setTimeout(() => {
-                        hideTyping();
-                        appendMessage("📞 Masukkan **Nomor HP** Anda yang aktif:", false);
-                    }, 500);
-                    return;
-                }
-                
-                if (reportState === 'WAITING_PHONE') {
-                    reportData.hp = message;
-                    reportState = 'WAITING_COMPLAINT';
-                    showTyping();
-                    setTimeout(() => {
-                        hideTyping();
-                        appendMessage("💬 Tuliskan **Detail Keluhan** Anda dengan jelas:", false);
-                    }, 500);
-                    return;
-                }
-                
-                if (reportState === 'WAITING_COMPLAINT') {
-                    reportData.keluhan = message;
-                    reportState = 'NORMAL';
-                    showTyping();
-                    
-                    // Kirim ke n8n
-                    try {
-                        const payload = {
-                            "ComplianerName": reportData.nama,
-                            "ComplianerAddress": reportData.alamat,
-                            "PhoneNumber": reportData.hp,
-                            "CompliantContent": reportData.keluhan,
-                            "InputedBy": "web_chatbot" // Ditandai dari web_chatbot
-                        };
-                        
-                        const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(payload)
-                        });
-                        
-                        hideTyping();
-                        
-                        if (n8nResponse.ok) {
-                            appendMessage(
-                                "✅ **Laporan Berhasil Terkirim!**\n\n" +
-                                "Terima kasih atas laporan Anda. Keluhan Anda telah kami teruskan ke sistem pusat untuk ditindaklanjuti.",
-                                false
-                            );
-                        } else {
-                            appendMessage(
-                                "⚠️ **Gagal Mengirim Laporan**\n\n" +
-                                "Terjadi respons tidak terduga dari server. Silakan coba beberapa saat lagi.",
-                                false
-                            );
-                        }
-                    } catch (error) {
-                        console.error("Error sending to n8n:", error);
-                        hideTyping();
-                        appendMessage(
-                            "⚠️ **Gagal Terhubung ke Server**\n\n" +
-                            "Koneksi sedang bermasalah. Mohon coba beberapa saat lagi.",
-                            false
-                        );
-                    }
-                    
                     return;
                 }
             }

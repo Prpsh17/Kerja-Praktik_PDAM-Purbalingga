@@ -2,47 +2,57 @@ import os
 import requests
 import json
 import logging
+from dotenv import load_dotenv
+
+load_dotenv()
+
+try:
+    from faq_data import FAQ_LIST
+except ImportError:
+    FAQ_LIST = []
 
 logger = logging.getLogger(__name__)
 
-# Konfigurasi Ollama Local
-OLLAMA_API_URL = "http://localhost:11434/api/generate"
-# Rekomendasi model yang ringan untuk RAM 16GB dan VRAM 4GB
-MODEL_NAME = "qwen2.5:3b"  # Anda juga bisa pakai "llama3.2:3b"
+# Konfigurasi OpenRouter
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-4-31b-it:free").strip()
 
-def call_ollama(prompt: str, system_prompt: str = ""):
-    """Fungsi helper untuk menembak API lokal Ollama."""
-    payload = {
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "system": system_prompt,
-        "stream": False,
-        "options": {
-            "repeat_penalty": 1.3,   # cegah pengulangan kata/frasa
-            "temperature": 0.65,     # kreativitas sedang, lebih konsisten
-            "top_p": 0.9,
-        }
+def call_llm(prompt: str, system_prompt: str = ""):
+    """Fungsi helper untuk menembak API OpenRouter (Cloud)."""
+    if not OPENROUTER_API_KEY:
+        logger.error("[OpenRouter] ERROR: OPENROUTER_API_KEY tidak dikonfigurasi di berkas .env!")
+        return None
+        
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost:8001",
+        "X-Title": "PDAM Purbalingga Chatbot"
     }
-    
+    payload = {
+        "model": OPENROUTER_MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.65,
+    }
     try:
-        logger.info(f"[Ollama] Memanggil model '{MODEL_NAME}' | prompt: {prompt[:80]!r}...")
-        response = requests.post(OLLAMA_API_URL, json=payload, timeout=120)
+        logger.info(f"[OpenRouter] Memanggil model '{OPENROUTER_MODEL}'...")
+        response = requests.post(url, json=payload, headers=headers, timeout=120)
         response.raise_for_status()
         data = response.json()
-        result = data.get("response", "").strip()
-        if not result:
-            logger.warning("[Ollama] Model mengembalikan respons KOSONG!")
+        choices = data.get("choices", [])
+        if choices:
+            result = choices[0].get("message", {}).get("content", "").strip()
+            logger.info(f"[OpenRouter] Respons OK ({len(result)} karakter)")
+            return result
         else:
-            logger.info(f"[Ollama] Respons OK ({len(result)} karakter): {result[:100]!r}...")
-        return result
-    except requests.exceptions.ConnectionError:
-        logger.error("[Ollama] ERROR: Aplikasi Ollama belum menyala atau belum di-install.")
-        return None
-    except requests.exceptions.Timeout:
-        logger.error("[Ollama] ERROR: Request timeout setelah 120 detik.")
-        return None
+            logger.warning("[OpenRouter] Model mengembalikan pilihan kosong!")
+            return None
     except Exception as e:
-        logger.error(f"[Ollama] ERROR tidak terduga: {e}")
+        logger.error(f"[OpenRouter] Gagal memanggil API: {e}.")
         return None
 
 def clean_chinese_characters(text: str) -> str:
@@ -70,6 +80,7 @@ KATEGORI:
 - "OUT_OF_CONTEXT": Jika pesan SAMA SEKALI TIDAK ADA HUBUNGANNYA dengan PDAM (contoh: politik, presiden, koding, sejarah, matematika, cuaca).
 - "LIHAT_NOMER": Jika user bertanya tentang nomor pelanggan pdam
 - "LAPOR_KELUHAN": Jika user ingin mengadu, mengeluhkan layanan air mati, air keruh, pipa bocor, meteran rusak, atau ingin membuat pengaduan keluhan pelanggan.
+- "FAQ": Jika user menanyakan info umum seputar layanan PDAM (contoh: syarat pasang baru, ganti nama rekening, denda keterlambatan, pemutusan air, jam operasional kantor).
 
 Output HANYA boleh berupa JSON murni dengan format:
 {"intent": "NAMA_KATEGORI", "nolangg": "nomor_jika_ada_dan_berupa_angka_atau_null"}
@@ -125,12 +136,20 @@ Output: {"intent": "LAPOR_KELUHAN", "nolangg": null}
 CONTOH 13:
 User: "air pdam keruh dan kotor sekali"
 Output: {"intent": "LAPOR_KELUHAN", "nolangg": null}
+
+CONTOH 14:
+User: "apa saja syarat pasang baru pdam?"
+Output: {"intent": "FAQ", "nolangg": null}
+
+CONTOH 15:
+User: "kantor pdam purbalingga buka jam berapa?"
+Output: {"intent": "FAQ", "nolangg": null}
 """
     # Prompting model untuk klasifikasi
-    text_response = call_ollama(prompt=user_message, system_prompt=system_instruction)
+    text_response = call_llm(prompt=user_message, system_prompt=system_instruction)
     
     if text_response is None:
-        return {"intent": "ERROR", "reply": "Maaf, sistem AI lokal (Ollama) sedang mati atau belum di-install."}
+        return {"intent": "ERROR", "reply": "Maaf, sistem kecerdasan buatan (OpenRouter) sedang bermasalah atau belum dikonfigurasi."}
 
     # Bersihkan response dari karakter Mandarin jika bocor
     text_response = clean_chinese_characters(text_response)
@@ -179,13 +198,46 @@ Output: {"intent": "LAPOR_KELUHAN", "nolangg": null}
             intent = "CARA_BAYAR"
         elif "SAPAAN" in upper_resp:
             intent = "SAPAAN"
+        elif "FAQ" in upper_resp:
+            intent = "FAQ"
         elif "LAPOR_KELUHAN" in upper_resp or "COMPLAINT" in upper_resp:
             intent = "LAPOR_KELUHAN"
 
-    # Fallback tambahan berbasis kata kunci langsung dari input user untuk lapor keluhan
     user_msg_upper = user_message.upper()
-    if any(keyword in user_msg_upper for keyword in ["LAPOR", "KELUHAN", "ADUAN", "KOMPLAIN", "MATI", "KERUH", "BOCOR", "RUSAK"]):
-        intent = "LAPOR_KELUHAN"
+    
+    # 1. Cek apakah ada kata kunci dari faq_data (Prioritas lebih tinggi dari fallback keluhan kasar)
+    is_faq_keyword_matched = False
+    for item in FAQ_LIST:
+        if any(keyword in user_msg_upper for keyword in [k.upper() for k in item["keywords"]]):
+            is_faq_keyword_matched = True
+            break
+            
+    if is_faq_keyword_matched and intent not in ["CEK_TAGIHAN", "LIHAT_NOMER", "CARA_BAYAR"]:
+        intent = "FAQ"
+
+    # 2. Cek apakah pesan mengandung indikator pertanyaan (FAQ / tanya jawab umum)
+    tanya_words = ["KENAPA", "KOK", "MENGAPA", "BAGAIMANA", "APAKAH", "SOLUSI", "CARA", "SYARAT", "ESTIMASI", "INFO"]
+    is_asking = any(q_word in user_msg_upper for q_word in tanya_words)
+    
+    # Override ke FAQ jika user sedang mengajukan pertanyaan tetapi AI salah mengklasifikasikan sebagai LAPOR_KELUHAN
+    if is_asking and intent == "LAPOR_KELUHAN":
+        intent = "FAQ"
+    
+    # 3. Fallback tambahan berbasis kata kunci langsung dari input user untuk lapor keluhan
+    # Hanya aktif jika user TIDAK sedang bertanya (is_asking == False) dan tidak cocok kata kunci FAQ
+    if intent not in ["CEK_TAGIHAN", "LIHAT_NOMER", "CARA_BAYAR", "FAQ"]:
+        # Kata "lapor" seringkali muncul dalam "laporan" (pelacakan status/laporan selesai),
+        # sehingga kita bedakan dengan mengecek "laporan" secara khusus
+        is_tracking_or_status = any(phrase in user_msg_upper for phrase in ["CEK LAPORAN", "STATUS LAPORAN", "TIKET LAPORAN", "LAPORAN SELESAI"])
+        
+        if not is_tracking_or_status and not is_asking:
+            complaint_keywords = ["KELUHAN", "ADUAN", "KOMPLAIN", "MATI", "KERUH", "BOCOR", "RUSAK", "MELAPORKAN"]
+            has_lapor = "LAPOR" in user_msg_upper and "LAPORAN" not in user_msg_upper
+            if "MELAPORKAN" in user_msg_upper:
+                has_lapor = True
+                
+            if has_lapor or any(keyword in user_msg_upper for keyword in complaint_keywords):
+                intent = "LAPOR_KELUHAN"
 
     # Fallback 2: Cari nomor pelanggan (8 digit angka) dari pesan user secara mandiri
     # Ini sangat aman karena regex lebih terpercaya dibanding AI mengekstrak angka
@@ -212,6 +264,9 @@ Output: {"intent": "LAPOR_KELUHAN", "nolangg": null}
         elif intent == "LIHAT_NOMER":
             data["intent"] = "GENERAL"
             data["reply"] = generate_general_response(user_message, "LIHAT_NOMER")
+        elif intent == "FAQ":
+            data["intent"] = "GENERAL"
+            data["reply"] = generate_faq_response(user_message)
         elif intent == "LAPOR_KELUHAN":
             data["intent"] = "LAPOR_KELUHAN"
             data["reply"] = "Memulai alur pelaporan keluhan pelanggan..."
@@ -238,7 +293,7 @@ def generate_general_response(user_message: str, intent: str) -> str:
     konteks_map = {
         "SAPAAN": (
             "User menyapa bot PDAM. Balas dengan hangat dan ramah sebagai Asisten Virtual "
-            "PDAM Purbalingga. Sebutkan bahwa kamu bisa bantu cek tagihan dan info pembayaran."
+            "PDAM Purbalingga. Tanyakan apakah ada yang bisa di bantu oleh kamu ke user tentang pdam dengan ceria"
         ),
         "CARA_BAYAR": (
             "User bertanya cara bayar tagihan PDAM. Informasi pembayaran yang BENAR dan harus "
@@ -288,22 +343,85 @@ def generate_general_response(user_message: str, intent: str) -> str:
         "Tulis balasan singkat (maks 3 kalimat) dalam Bahasa Indonesia murni:"
     )
 
-    response = call_ollama(prompt=prompt, system_prompt=system_prompt)
+    response = call_llm(prompt=prompt, system_prompt=system_prompt)
 
-    # Fallback statis jika Ollama gagal/timeout
+    # Fallback statis jika OpenRouter gagal/timeout
     if not response:
         fallbacks = {
             "SAPAAN":        "Halo! 👋 Saya Asisten Virtual PDAM Purbalingga. Ada yang bisa saya bantu? Saya siap membantu cek tagihan atau info pembayaran Anda 😊",
             "CARA_BAYAR":    "Untuk pembayaran tagihan air PDAM, Anda bisa menggunakan ATM, Alfamart, Indomaret, Mobile Banking, atau langsung di loket resmi PDAM terdekat. 💳",
             "OUT_OF_CONTEXT":"Mohon maaf, saya hanya dapat melayani pertanyaan seputar layanan PDAM Purbalingga seperti cek tagihan dan informasi pembayaran. 🙏",
             "LIHAT_NOMER":   "Jika Anda lupa nomor pelanggan PDAM Purbalingga, Anda bisa melihatnya di:\n1. Struk/kuitansi pembayaran bulan sebelumnya.\n2. Kartu pelanggan atau buku rekening PDAM.\n3. Plat besi/stiker kecil pada unit meteran air fisik di rumah Anda.\n4. Datang langsung ke kantor PDAM Purbalingga terdekat untuk menanyakannya pada petugas dengan membawa KTP pemilik. 😊",
-            "CEK_TAGIHAN":   "Untuk mengecek tagihan Anda, mohon kirimkan nomor pelanggan Anda ya. 💧 Nomor pelanggan biasanya 8 digit dan tertera di struk pembayaran Anda.",
+            "CEK_TAGIHAN":   "Pelanggan dapat mengecek estimasi atau jumlah tagihan secara mandiri melalui:\n1. Aplikasi mobile resmi PDAM atau portal website pelanggan.\n2. Aplikasi e-commerce (Tokopedia, Shopee, dll) dan dompet digital (Dana, GoPay, OVO).\n3. Layanan mobile banking atau ATM bank yang bekerja sama.\n4. Minimarket terdekat (Indomaret, Alfamart) dengan memberikan Nomor Pelanggan/Nomor Sambungan ke kasir.\n5. Atau anda bisa ketikan nomor pelanggan anda di sini dan saya akan bantu cek tagihan air anda "
         }
         return fallbacks.get(intent, "Maaf, terjadi kesalahan sistem. Silakan coba lagi.")
 
     response = clean_chinese_characters(response)
     return response
 
+def get_matching_faq(user_message: str):
+    user_msg_lower = user_message.lower()
+    best_match = None
+    max_score = 0
+    
+    from difflib import SequenceMatcher
+    
+    for item in FAQ_LIST:
+        # Hitung keyword overlap
+        keyword_score = 0
+        for keyword in item["keywords"]:
+            if keyword.lower() in user_msg_lower:
+                keyword_score += 2.0  # Bobot tinggi jika keyword ada di pesan
+        
+        # Hitung rasio kemiripan dengan pertanyaan FAQ
+        ratio = SequenceMatcher(None, user_msg_lower, item["question"].lower()).ratio()
+        total_score = keyword_score + (ratio * 1.5)
+        
+        if total_score > max_score and total_score > 0.5:
+            max_score = total_score
+            best_match = item
+            
+    return best_match
+
+def generate_faq_response(user_message: str) -> str:
+    # 1. Cari FAQ yang paling cocok
+    matched_faq = get_matching_faq(user_message)
+    
+    if not matched_faq:
+        # Jika tidak ada FAQ yang sangat cocok, berikan semua pertanyaan FAQ sebagai konteks ke Ollama
+        context = "\n\n".join([f"Pertanyaan: {item['question']}\nJawaban: {item['answer']}" for item in FAQ_LIST])
+    else:
+        context = f"Pertanyaan: {matched_faq['question']}\nJawaban: {matched_faq['answer']}"
+        
+    system_prompt = (
+        "Kamu adalah Asisten Virtual PDAM Purbalingga yang ramah dan profesional.\n"
+        "ATURAN WAJIB:\n"
+        "1. Jawab pertanyaan user berdasarkan KONTEKS FAQ yang diberikan di bawah secara lengkap, ramah, dan instruktif.\n"
+        "2. DILARANG KERAS menghilangkan langkah-langkah solusi teknis penting (seperti mengecek stop kran engkol meteran, melakukan pembilasan/flushing, dll) jika tertulis di dalam jawaban FAQ.\n"
+        "3. JANGAN mengarang informasi di luar konteks FAQ.\n"
+        "4. Jawab dalam Bahasa Indonesia murni yang jelas dan terstruktur.\n"
+        "5. Gunakan emoji 1-2 saja."
+    )
+    
+    prompt = (
+        f"Konteks FAQ resmi:\n{context}\n\n"
+        f"Pertanyaan pelanggan: \"{user_message}\"\n\n"
+        "Tulis balasan singkat dalam Bahasa Indonesia murni berdasarkan konteks FAQ di atas:"
+    )
+    
+    response = call_llm(prompt=prompt, system_prompt=system_prompt)
+    
+    # Fallback jika OpenRouter offline/timeout atau tidak menghasilkan respons yang baik
+    if not response:
+        if matched_faq:
+            return matched_faq["answer"]
+        else:
+            return (
+                "Maaf, saya tidak menemukan informasi yang tepat mengenai hal tersebut di data FAQ kami. 😔\n"
+                "Anda dapat menanyakan hal lain seputar pasang baru, tarif air, balik nama, atau jam pelayanan kantor."
+            )
+            
+    return clean_chinese_characters(response)
 
 def generate_billing_response(user_message: str, billing_data: dict, nolangg: str):
     """
@@ -332,7 +450,7 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
             "Buat balasan pendek yang sopan, minta user memeriksa kembali nomornya, "
             "dan sarankan menghubungi kantor PDAM jika masih tidak ditemukan:"
         )
-        response = call_ollama(prompt=prompt, system_prompt=system_prompt)
+        response = call_llm(prompt=prompt, system_prompt=system_prompt)
         if response:
             return clean_chinese_characters(response)
         return (
@@ -363,7 +481,7 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
             f"- Status tagihan: LUNAS (tidak ada tagihan tertunggak sama sekali)\n\n"
             "Buat balasan pendek yang menyenangkan karena pelanggan tidak memiliki tunggakan:"
         )
-        response = call_ollama(prompt=prompt, system_prompt=system_prompt)
+        response = call_llm(prompt=prompt, system_prompt=system_prompt)
         if response:
             return clean_chinese_characters(response)
         return (
@@ -426,7 +544,7 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
         "Buat balasan yang natural dan informatif berdasarkan data di atas:"
     )
 
-    response = call_ollama(prompt=prompt, system_prompt=system_prompt)
+    response = call_llm(prompt=prompt, system_prompt=system_prompt)
 
     # Fallback Python statis jika AI gagal/timeout
     if not response:

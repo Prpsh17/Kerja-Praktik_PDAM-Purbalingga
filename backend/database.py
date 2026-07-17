@@ -58,3 +58,62 @@ def get_unpaid_billing(nolangg: str):
         if connection.is_connected():
             cursor.close()
             connection.close()
+
+def create_complaint(name: str, address: str, phone: str, content: str, inputed_by: str = "web_chatbot"):
+    connection = get_db_connection()
+    if not connection:
+        return None
+    try:
+        cursor = connection.cursor()
+        
+        # 1. Generate unique ticket number: DDMMYYYY-randint(100, 999)
+        from datetime import datetime
+        import random
+        date_str = datetime.now().strftime("%d%m%Y")
+        ticket_number = f"{date_str}-{random.randint(100, 999)}"
+        
+        # 2. Insert complaint
+        query = """
+            INSERT INTO customercomplaint (
+                DateCompliant, Number, ComplianerName, ComplianerAddress, PhoneNumber, 
+                CompliantContent, CompliantStatusId, InputedDate, isDeleted, 
+                UpdatedDate, InputedBy, CompliantTypeId
+            ) VALUES (
+                NOW(), %s, %s, %s, %s, 
+                %s, 1, NOW(), 0, 
+                NOW(), %s, 1
+            )
+        """
+        cursor.execute(query, (ticket_number, name, address, phone, content, inputed_by))
+        connection.commit()
+        return ticket_number
+    except Error as e:
+        print(f"Error creating complaint: {e}")
+        return None
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def get_complaint_status(ticket_number: str):
+    connection = get_db_connection()
+    if not connection:
+        return None
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = """
+            SELECT CompliantStatusId, CompliantContent, ComplianerName 
+            FROM customercomplaint 
+            WHERE Number = %s 
+            LIMIT 1
+        """
+        cursor.execute(query, (ticket_number,))
+        result = cursor.fetchone()
+        return result
+    except Error as e:
+        print(f"Error getting complaint status: {e}")
+        return None
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()

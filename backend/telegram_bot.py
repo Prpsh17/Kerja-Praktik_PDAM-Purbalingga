@@ -95,7 +95,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Kirim indikator 'mengetik...' agar UX terasa responsif
     await context.bot.send_chat_action(chat_id=chat_id, action="typing")
 
-    # 1. Ekstrak intent menggunakan AI (Ollama lokal)
+    # 1. Ekstrak intent menggunakan AI (OpenRouter)
     ai_result = extract_intent(user_msg)
     intent = ai_result.get("intent", "GENERAL")
     nolangg = ai_result.get("nolangg")

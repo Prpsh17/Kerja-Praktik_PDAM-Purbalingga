@@ -902,7 +902,7 @@
                 }
             }
 
-            // 3. Jalankan alur normal (Ollama AI) jika state NORMAL
+            // 3. Jalankan alur normal (OpenRouter AI) jika state NORMAL
             showTyping();
 
             try {

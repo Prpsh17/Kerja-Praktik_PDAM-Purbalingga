@@ -2,48 +2,68 @@ import os
 import requests
 import json
 import logging
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Konfigurasi Ollama Local
-OLLAMA_API_URL = "http://localhost:11434/api/generate"
-# Rekomendasi model yang ringan untuk RAM 16GB dan VRAM 4GB
-MODEL_NAME = "qwen2.5:3b"  # Anda juga bisa pakai "llama3.2:3b"
+# Konfigurasi OpenRouter AI
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash")
 
-def call_ollama(prompt: str, system_prompt: str = ""):
-    """Fungsi helper untuk menembak API lokal Ollama."""
+def call_openrouter(prompt: str, system_prompt: str = ""):
+    """Fungsi helper untuk memanggil API OpenRouter."""
+    if not OPENROUTER_API_KEY:
+        logger.error("[OpenRouter] ERROR: OPENROUTER_API_KEY belum dikonfigurasi di file .env!")
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost:8000",  # Opsional
+        "X-Title": "PDAM Chatbot",               # Opsional
+    }
+
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt})
+
     payload = {
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "system": system_prompt,
-        "stream": False,
-        "options": {
-            "repeat_penalty": 1.3,   # cegah pengulangan kata/frasa
-            "temperature": 0.65,     # kreativitas sedang, lebih konsisten
-            "top_p": 0.9,
-        }
+        "model": OPENROUTER_MODEL,
+        "messages": messages,
+        "temperature": 0.65,
+        "top_p": 0.9,
     }
     
     try:
-        logger.info(f"[Ollama] Memanggil model '{MODEL_NAME}' | prompt: {prompt[:80]!r}...")
-        response = requests.post(OLLAMA_API_URL, json=payload, timeout=120)
+        logger.info(f"[OpenRouter] Memanggil model '{OPENROUTER_MODEL}' | prompt: {prompt[:80]!r}...")
+        response = requests.post(OPENROUTER_API_URL, headers=headers, json=payload, timeout=60)
         response.raise_for_status()
         data = response.json()
-        result = data.get("response", "").strip()
-        if not result:
-            logger.warning("[Ollama] Model mengembalikan respons KOSONG!")
+        
+        if "choices" in data and len(data["choices"]) > 0:
+            result = data["choices"][0]["message"]["content"].strip()
+            if not result:
+                logger.warning("[OpenRouter] Model mengembalikan respons KOSONG!")
+            else:
+                logger.info(f"[OpenRouter] Respons OK ({len(result)} karakter): {result[:100]!r}...")
+            return result
         else:
-            logger.info(f"[Ollama] Respons OK ({len(result)} karakter): {result[:100]!r}...")
-        return result
+            logger.error(f"[OpenRouter] format respons tidak dikenal: {data}")
+            return None
     except requests.exceptions.ConnectionError:
-        logger.error("[Ollama] ERROR: Aplikasi Ollama belum menyala atau belum di-install.")
+        logger.error("[OpenRouter] ERROR: Gagal terhubung ke server OpenRouter.")
         return None
     except requests.exceptions.Timeout:
-        logger.error("[Ollama] ERROR: Request timeout setelah 120 detik.")
+        logger.error("[OpenRouter] ERROR: Request timeout setelah 60 detik.")
         return None
     except Exception as e:
-        logger.error(f"[Ollama] ERROR tidak terduga: {e}")
+        logger.error(f"[OpenRouter] ERROR tidak terduga: {e}")
         return None
+
 
 def clean_chinese_characters(text: str) -> str:
     """Hapus semua karakter Hanzi/Mandarin dari teks jika AI mengalami kebocoran bahasa."""
@@ -56,7 +76,7 @@ def clean_chinese_characters(text: str) -> str:
 
 def extract_intent(user_message: str):
     """
-    [STEP 1] Menggunakan Ollama untuk mengekstrak intent dan nomor pelanggan.
+    [STEP 1] Menggunakan OpenRouter untuk mengekstrak intent dan nomor pelanggan.
     Tugasnya HANYA klasifikasi NLU — murni JSON output, bukan generate teks balasan.
     """
     system_instruction = """
@@ -127,10 +147,10 @@ User: "air pdam keruh dan kotor sekali"
 Output: {"intent": "LAPOR_KELUHAN", "nolangg": null}
 """
     # Prompting model untuk klasifikasi
-    text_response = call_ollama(prompt=user_message, system_prompt=system_instruction)
+    text_response = call_openrouter(prompt=user_message, system_prompt=system_instruction)
     
     if text_response is None:
-        return {"intent": "ERROR", "reply": "Maaf, sistem AI lokal (Ollama) sedang mati atau belum di-install."}
+        return {"intent": "ERROR", "reply": "Maaf, terjadi masalah koneksi atau konfigurasi AI (OpenRouter) belum benar."}
 
     # Bersihkan response dari karakter Mandarin jika bocor
     text_response = clean_chinese_characters(text_response)
@@ -288,9 +308,9 @@ def generate_general_response(user_message: str, intent: str) -> str:
         "Tulis balasan singkat (maks 3 kalimat) dalam Bahasa Indonesia murni:"
     )
 
-    response = call_ollama(prompt=prompt, system_prompt=system_prompt)
+    response = call_openrouter(prompt=prompt, system_prompt=system_prompt)
 
-    # Fallback statis jika Ollama gagal/timeout
+    # Fallback statis jika OpenRouter gagal/timeout
     if not response:
         fallbacks = {
             "SAPAAN":        "Halo! 👋 Saya Asisten Virtual PDAM Purbalingga. Ada yang bisa saya bantu? Saya siap membantu cek tagihan atau info pembayaran Anda 😊",
@@ -332,7 +352,7 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
             "Buat balasan pendek yang sopan, minta user memeriksa kembali nomornya, "
             "dan sarankan menghubungi kantor PDAM jika masih tidak ditemukan:"
         )
-        response = call_ollama(prompt=prompt, system_prompt=system_prompt)
+        response = call_openrouter(prompt=prompt, system_prompt=system_prompt)
         if response:
             return clean_chinese_characters(response)
         return (
@@ -363,7 +383,7 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
             f"- Status tagihan: LUNAS (tidak ada tagihan tertunggak sama sekali)\n\n"
             "Buat balasan pendek yang menyenangkan karena pelanggan tidak memiliki tunggakan:"
         )
-        response = call_ollama(prompt=prompt, system_prompt=system_prompt)
+        response = call_openrouter(prompt=prompt, system_prompt=system_prompt)
         if response:
             return clean_chinese_characters(response)
         return (
@@ -426,7 +446,7 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
         "Buat balasan yang natural dan informatif berdasarkan data di atas:"
     )
 
-    response = call_ollama(prompt=prompt, system_prompt=system_prompt)
+    response = call_openrouter(prompt=prompt, system_prompt=system_prompt)
 
     # Fallback Python statis jika AI gagal/timeout
     if not response:

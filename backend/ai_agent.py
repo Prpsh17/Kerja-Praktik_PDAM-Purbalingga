@@ -239,13 +239,19 @@ Output: {"intent": "FAQ", "nolangg": null}
             if has_lapor or any(keyword in user_msg_upper for keyword in complaint_keywords):
                 intent = "LAPOR_KELUHAN"
 
-    # Fallback 2: Cari nomor pelanggan (8 digit angka) dari pesan user secara mandiri
-    # Ini sangat aman karena regex lebih terpercaya dibanding AI mengekstrak angka
-    num_match = re.search(r'\b\d{8,}\b', user_message)
-    if num_match and intent != "LAPOR_KELUHAN":
-        nolangg = num_match.group(0)
-        # Jika ada nomor pelanggan, pastikan intent dipaksa ke CEK_TAGIHAN
-        intent = "CEK_TAGIHAN"
+    # 1. Cari nomor tiket keluhan terlebih dahulu (misal: 19122021-1)
+    ticket_match = re.search(r'\b\d{8}-\d+\b', user_message)
+    if ticket_match:
+        intent = "CEK_STATUS"
+        nolangg = None
+    else:
+        # Fallback 2: Cari nomor pelanggan (8 digit angka) dari pesan user secara mandiri
+        # Ini sangat aman karena regex lebih terpercaya dibanding AI mengekstrak angka
+        num_match = re.search(r'\b\d{8,}\b', user_message)
+        if num_match and intent != "LAPOR_KELUHAN":
+            nolangg = num_match.group(0)
+            # Jika ada nomor pelanggan, pastikan intent dipaksa ke CEK_TAGIHAN
+            intent = "CEK_TAGIHAN"
 
     # Buat dictionary data akhir
     data = {"intent": intent, "nolangg": nolangg}
@@ -270,6 +276,9 @@ Output: {"intent": "FAQ", "nolangg": null}
         elif intent == "LAPOR_KELUHAN":
             data["intent"] = "LAPOR_KELUHAN"
             data["reply"] = "Memulai alur pelaporan keluhan pelanggan..."
+        elif intent == "CEK_STATUS":
+            data["intent"] = "CEK_STATUS"
+            data["reply"] = "Sedang mengecek status laporan keluhan..."
         elif intent == "CEK_TAGIHAN":
             if not data.get("nolangg"):
                 data["intent"] = "CEK_TAGIHAN"

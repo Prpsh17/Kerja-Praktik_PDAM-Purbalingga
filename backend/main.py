@@ -65,6 +65,41 @@ async def chat_endpoint(request: ChatRequest):
     elif intent == "LAPOR_KELUHAN":
         return ChatResponse(reply=reply, intent=intent)
         
+    elif intent == "CEK_STATUS":
+        from database import get_complaint_status
+        import re
+        ticket_match = re.search(r'\b\d{8}-\d+\b', user_msg)
+        if ticket_match:
+            ticket_number = ticket_match.group(0)
+            result = get_complaint_status(ticket_number)
+            if result:
+                status_id = result.get("CompliantStatusId")
+                status_name = "Dilaporkan"
+                message = "Laporan Anda telah kami terima dan masuk dalam antrean sistem."
+                
+                if status_id == 2:
+                    status_name = "Pengecekan"
+                    message = "Petugas teknis kami sedang melakukan pengecekan di lokasi."
+                elif status_id == 3:
+                    status_name = "Pengerjaan"
+                    message = "Laporan Anda sedang dalam proses perbaikan/pengerjaan oleh petugas lapangan."
+                elif status_id == 4:
+                    status_name = "Selesai"
+                    message = "Laporan Anda sudah diselesaikan oleh petugas lapangan. Terima kasih."
+                
+                reply = (
+                    f"🔍 **Hasil Pelacakan Laporan Keluhan**\n\n"
+                    f"• Nomor Laporan: **{ticket_number}**\n"
+                    f"• Status: **{status_name}**\n\n"
+                    f"{message}"
+                )
+                return ChatResponse(reply=reply, intent=intent)
+            else:
+                reply = f"Nomor laporan **{ticket_number}** tidak ditemukan. Silakan periksa kembali nomor tiket Anda."
+                return ChatResponse(reply=reply, intent=intent)
+        else:
+            return ChatResponse(reply="Format nomor tiket keluhan tidak valid.", intent=intent)
+        
     elif intent == "ERROR":
         return ChatResponse(reply=reply, intent=intent)
         

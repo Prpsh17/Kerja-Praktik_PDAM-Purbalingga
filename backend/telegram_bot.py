@@ -11,9 +11,8 @@ from telegram.ext import (
     ConversationHandler,
 )
 from ai_agent import extract_intent, generate_billing_response
-from database import get_unpaid_billing
+from database import get_unpaid_billing, create_complaint
 import asyncio
-import requests
 
 # ─────────────────────────────────────────────
 # Setup
@@ -183,51 +182,42 @@ async def lapor_hp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return DETAIL_KELUHAN # Menuju ke state berikutnya
 
 async def lapor_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Menyimpan detail keluhan, mengirim ke n8n, dan selesai."""
+    """Menyimpan detail keluhan langsung ke database dan selesai."""
     context.user_data["lapor_keluhan"] = update.message.text
     
     # Kirim status loading ke user
-    await update.message.reply_text("⏳ Sedang memproses dan mengirim laporan Anda...")
+    await update.message.reply_text("⏳ Sedang memproses dan menyimpan laporan Anda...")
 
-    # 1. Susun JSON Payload
-    payload = {
-        "ComplianerName": context.user_data.get("lapor_nama"),
-        "ComplianerAddress": context.user_data.get("lapor_alamat"),
-        "PhoneNumber": context.user_data.get("lapor_hp"),
-        "CompliantContent": context.user_data.get("lapor_keluhan"),
-        "InputedBy": "telegram_bot" # Hardcoded sesuai instruksi
-    }
-    
-    # 2. Definisikan URL Webhook n8n
-    n8n_url = "https://glandular-thrash-mutable.ngrok-free.dev/webhook-test/28b42cd8-5b7e-4773-b3b6-d96cef432bdd"
-    
-    # 3. Kirim POST Request secara Asinkron
+    # Simpan Keluhan ke Database
     try:
-        # Kita gunakan asyncio.to_thread agar pemanggilan requests.post tidak memblokir event loop
-        response = await asyncio.to_thread(
-            requests.post, 
-            n8n_url, 
-            json=payload, 
-            timeout=10
+        ticket_number = await asyncio.to_thread(
+            create_complaint,
+            context.user_data.get("lapor_nama"),
+            context.user_data.get("lapor_alamat"),
+            context.user_data.get("lapor_hp"),
+            context.user_data.get("lapor_keluhan"),
+            "telegram_bot"
         )
         
-        if response.status_code in (200, 201):
+        if ticket_number:
             await update.message.reply_text(
                 "✅ *Laporan Berhasil Terkirim!*\n\n"
-                "Terima kasih atas laporan Anda. Keluhan Anda telah kami teruskan ke sistem pusat untuk ditindaklanjuti.",
+                "Terima kasih atas laporan Anda. Keluhan Anda telah dicatat oleh sistem dengan nomor tiket:\n"
+                f"`{ticket_number}`\n\n"
+                "Simpan nomor tiket ini untuk melacak status penanganan keluhan Anda.",
                 parse_mode="Markdown"
             )
         else:
             await update.message.reply_text(
-                "⚠️ *Gagal Mengirim Laporan*\n\n"
-                "Terjadi respons tidak terduga dari server. Silakan coba lagi nanti."
+                "⚠️ *Gagal Menyimpan Laporan*\n\n"
+                "Terjadi kesalahan pada sistem saat menyimpan laporan Anda. Silakan coba lagi nanti."
             )
             
     except Exception as e:
-        logger.error(f"Error webhook n8n: {e}")
+        logger.error(f"Error saving complaint to database: {e}")
         await update.message.reply_text(
-            "⚠️ *Gagal Terhubung ke Server*\n\n"
-            "Koneksi sedang bermasalah. Mohon coba beberapa saat lagi."
+            "⚠️ *Gagal Terhubung ke Database*\n\n"
+            "Koneksi database sedang bermasalah. Mohon coba beberapa saat lagi."
         )
 
     # Bersihkan memori context setelah selesai digunakan

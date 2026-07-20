@@ -108,5 +108,54 @@ FAQ_LIST = [
             "📧 Email: mail@pdampurbalingga.co.id\n"
             "🌐 Website Resmi: https://pdampurbalingga.co.id"
         )
+    },
+    {
+        "keywords": ["baca meteran", "angka meteran", "cara baca", "meteran air", "angka hitam", "angka merah"],
+        "question": "Bagaimana cara membaca meteran air PDAM sendiri di rumah?",
+        "answer": (
+            "Untuk membaca meteran air, perhatikan angka pada register meteran:\n"
+            "1. Angka berwarna HITAM: Menunjukkan volume pemakaian dalam meter kubik (m3). Angka inilah yang dicatat oleh petugas dan digunakan sebagai dasar perhitungan tagihan.\n"
+            "2. Angka berwarna MERAH: Menunjukkan volume dalam satuan liter. Angka merah ini biasanya diabaikan saat pencatatan tagihan bulanan.\n"
+            "Mencatat angka hitam secara berkala membantu Anda memantau konsumsi air mandiri."
+        )
+    },
+    {
+        "keywords": ["catat meter", "petugas catat", "jadwal catat", "tanggal catat", "pencatatan"],
+        "question": "Kapan jadwal petugas melakukan pencatatan meteran air ke rumah?",
+        "answer": (
+            "Petugas pembaca meter PDAM biasanya datang ke rumah pelanggan antara tanggal 1 sampai 10 setiap bulannya.\n"
+            "Mohon pastikan area sekitar meteran air di rumah Anda mudah diakses (tidak terhalang barang, pintu pagar tidak dikunci, atau anjing peliharaan diikat) agar petugas dapat mencatat angka meter dengan akurat."
+        )
+    },
+    {
+        "keywords": ["tagihan melonjak", "tagihan naik", "tagihan mahal", "bengkak", "naik drastis", "mahal sekali"],
+        "question": "Mengapa tagihan air bulan ini melonjak tinggi secara drastis?",
+        "answer": (
+            "Lonjakan tagihan air umumnya disebabkan oleh beberapa faktor berikut:\n"
+            "1. Kebocoran pipa instalasi setelah meteran (tanggung jawab pelanggan). Cobalah tutup semua kran, jika jarum meteran tetap berputar, berarti ada kebocoran.\n"
+            "2. Kran air atau shower lupa ditutup rapat.\n"
+            "3. Adanya akumulasi koreksi angka meteran pada bulan-bulan sebelumnya jika rumah sempat terkunci saat petugas datang.\n"
+            "Silakan hubungi kantor pelayanan untuk melakukan kroscek fisik jika Anda mencurigai adanya kesalahan catat."
+        )
+    },
+    {
+        "keywords": ["pindah meteran", "geser meteran", "mindah meter", "posisi meteran"],
+        "question": "Bagaimana prosedur memindahkan atau menggeser posisi meteran air?",
+        "answer": (
+            "Pelanggan dilarang keras memindahkan, menggeser, atau membongkar meteran air sendiri karena merupakan aset PDAM.\n"
+            "Prosedur yang benar:\n"
+            "1. Ajukan permohonan pemindahan meteran ke kantor pelayanan PDAM terdekat dengan membawa KTP dan rekening air.\n"
+            "2. Petugas teknis akan melakukan survei kelayakan lokasi baru.\n"
+            "3. Pelanggan membayar biaya pemindahan sesuai RAB yang diterbitkan.\n"
+            "4. Petugas resmi PDAM akan melakukan relokasi meteran secara resmi."
+        )
+    },
+    {
+        "keywords": ["langsung minum", "aman diminum", "diminum langsung", "air minum", "merebus"],
+        "question": "Apakah air PDAM Purbalingga aman untuk langsung diminum?",
+        "answer": (
+            "Air yang didistribusikan PDAM telah melalui proses sterilisasi dan memenuhi standar kebersihan untuk MCK (Mandi, Cuci, Kakus).\n"
+            "Namun, air PDAM TIDAK direkomendasikan untuk langsung diminum langsung dari kran tanpa dimasak terlebih dahulu. Demi kesehatan, pastikan Anda merebus air hingga mendidih (100°C) sebelum dikonsumsi."
+        )
     }
 ]

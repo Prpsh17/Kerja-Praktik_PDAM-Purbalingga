@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Konfigurasi OpenRouter
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-4-31b-it:free").strip()
+OPENROUTER_EMBEDDING_MODEL = os.getenv("OPENROUTER_EMBEDDING_MODEL", "nvidia/nemotron-3-embed-1b:free").strip()
 
 def call_llm(prompt: str, system_prompt: str = ""):
     """Fungsi helper untuk menembak API OpenRouter (Cloud)."""
@@ -51,9 +52,58 @@ def call_llm(prompt: str, system_prompt: str = ""):
         else:
             logger.warning("[OpenRouter] Model mengembalikan pilihan kosong!")
             return None
+    except requests.exceptions.HTTPError as http_err:
+        error_detail = http_err.response.text
+        try:
+            error_json = http_err.response.json()
+            error_detail = json.dumps(error_json, indent=2)
+        except Exception:
+            pass
+        logger.error(f"[OpenRouter] HTTP ERROR {http_err.response.status_code}:\n{error_detail}")
+        return None
     except Exception as e:
         logger.error(f"[OpenRouter] Gagal memanggil API: {e}.")
         return None
+
+
+def get_openrouter_embedding(text: str) -> list:
+    """Panggil OpenRouter Embeddings API untuk mendapatkan representasi vektor."""
+    if not OPENROUTER_API_KEY:
+        logger.error("[OpenRouter] ERROR: OPENROUTER_API_KEY tidak dikonfigurasi di berkas .env!")
+        return []
+        
+    url = "https://openrouter.ai/api/v1/embeddings"
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost:8001",
+        "X-Title": "PDAM Purbalingga Chatbot"
+    }
+    payload = {
+        "model": OPENROUTER_EMBEDDING_MODEL,
+        "input": text
+    }
+    try:
+        logger.info(f"[OpenRouter] Memanggil embedding model '{OPENROUTER_EMBEDDING_MODEL}'...")
+        response = requests.post(url, json=payload, headers=headers, timeout=60)
+        response.raise_for_status()
+        data = response.json()
+        embedding = data["data"][0]["embedding"]
+        logger.info(f"[OpenRouter] Embedding OK ({len(embedding)} dimensi)")
+        return embedding
+    except requests.exceptions.HTTPError as http_err:
+        error_detail = http_err.response.text
+        try:
+            error_json = http_err.response.json()
+            error_detail = json.dumps(error_json, indent=2)
+        except Exception:
+            pass
+        logger.error(f"[OpenRouter] HTTP ERROR {http_err.response.status_code}:\n{error_detail}")
+        return []
+    except Exception as e:
+        logger.error(f"[OpenRouter] Gagal mengambil embedding: {e}")
+        return []
+
 
 def clean_chinese_characters(text: str) -> str:
     """Hapus semua karakter Hanzi/Mandarin dari teks jika AI mengalami kebocoran bahasa."""
@@ -205,9 +255,9 @@ Output: {"intent": "FAQ", "nolangg": null}
 
     user_msg_upper = user_message.upper()
     
-    # 1. Cek apakah ada kata kunci dari faq_data (Prioritas lebih tinggi dari fallback keluhan kasar)
+    # 1. Cek apakah ada kata kunci dari FAQ database (Prioritas lebih tinggi dari fallback keluhan kasar)
     is_faq_keyword_matched = False
-    for item in FAQ_LIST:
+    for item in FAQ_CACHE:
         if any(keyword in user_msg_upper for keyword in [k.upper() for k in item["keywords"]]):
             is_faq_keyword_matched = True
             break
@@ -368,21 +418,109 @@ def generate_general_response(user_message: str, intent: str) -> str:
     response = clean_chinese_characters(response)
     return response
 
+def cosine_similarity(v1, v2):
+    if not v1 or not v2 or len(v1) != len(v2):
+        return 0.0
+    dot_product = sum(a * b for a, b in zip(v1, v2))
+    norm_a = sum(a * a for a in v1) ** 0.5
+    norm_b = sum(b * b for b in v2) ** 0.5
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 0.0
+    return dot_product / (norm_a * norm_b)
+
+# Cache global untuk FAQ dan embedding-nya
+FAQ_CACHE = []
+
+def load_faq_cache():
+    """Muat FAQ dari database MySQL ke dalam memori RAM, beserta representasi vektornya."""
+    global FAQ_CACHE
+    try:
+        from database import get_all_faqs
+        db_faqs = get_all_faqs()
+        if db_faqs:
+            temp_cache = []
+            for item in db_faqs:
+                try:
+                    embedding_vector = json.loads(item["embedding"])
+                    temp_cache.append({
+                        "id": item["id"],
+                        "question": item["question"],
+                        "answer": item["answer"],
+                        "keywords": item["keywords"].split(",") if item["keywords"] else [],
+                        "embedding": embedding_vector
+                    })
+                except Exception as ex:
+                    logger.error(f"[load_faq_cache] Gagal mem-parsing embedding FAQ ID {item.get('id')}: {ex}")
+            
+            if temp_cache:
+                FAQ_CACHE = temp_cache
+                logger.info(f"[load_faq_cache] Berhasil memuat {len(FAQ_CACHE)} FAQ dengan embedding dari database.")
+                return
+        logger.warning("[load_faq_cache] Database tbl_faq kosong. Menggunakan fallback faq_data.py...")
+    except Exception as e:
+        logger.error(f"[load_faq_cache] Error saat memuat FAQ dari database: {e}")
+        
+    # Fallback ke faq_data.py jika database kosong/error
+    FAQ_CACHE = []
+    for item in FAQ_LIST:
+        FAQ_CACHE.append({
+            "id": None,
+            "question": item["question"],
+            "answer": item["answer"],
+            "keywords": item["keywords"],
+            "embedding": None
+        })
+    logger.info(f"[load_faq_cache] Berhasil memuat {len(FAQ_CACHE)} FAQ fallback dari faq_data.py.")
+
+# Jalankan loading FAQ cache saat modul pertama kali di-import
+load_faq_cache()
+
 def get_matching_faq(user_message: str):
+    """
+    Mencocokkan pesan user dengan FAQ menggunakan Semantic Search (Cosine Similarity).
+    Jika FAQ tidak memiliki embedding (misal fallback), gunakan keyword/SequenceMatcher.
+    """
+    global FAQ_CACHE
+    if not FAQ_CACHE:
+        load_faq_cache()
+        
     user_msg_lower = user_message.lower()
+    
+    # 1. Coba Semantic Search terlebih dahulu jika model embedding dikonfigurasi & cache memiliki embedding
+    has_embeddings = any(item["embedding"] is not None for item in FAQ_CACHE)
+    if has_embeddings:
+        try:
+            user_vector = get_openrouter_embedding(user_message)
+            if user_vector:
+                best_match = None
+                max_sim = 0.0
+                
+                for item in FAQ_CACHE:
+                    if item["embedding"]:
+                        sim = cosine_similarity(user_vector, item["embedding"])
+                        if sim > max_sim:
+                            max_sim = sim
+                            best_match = item
+                
+                logger.info(f"[get_matching_faq] Hasil Semantic Search: kemiripan tertinggi = {max_sim:.4f}")
+                # Ambang batas (threshold) kecocokan semantic search, misalnya 0.50
+                if max_sim >= 0.50:
+                    return best_match
+        except Exception as e:
+            logger.error(f"[get_matching_faq] Error saat semantic search: {e}")
+
+    # 2. Fallback: Keyword Matching + SequenceMatcher (jika API embedding gagal atau data tidak ada embedding)
+    logger.info("[get_matching_faq] Menggunakan fallback Keyword/SequenceMatcher.")
     best_match = None
     max_score = 0
-    
     from difflib import SequenceMatcher
     
-    for item in FAQ_LIST:
-        # Hitung keyword overlap
+    for item in FAQ_CACHE:
         keyword_score = 0
         for keyword in item["keywords"]:
             if keyword.lower() in user_msg_lower:
-                keyword_score += 2.0  # Bobot tinggi jika keyword ada di pesan
+                keyword_score += 2.0
         
-        # Hitung rasio kemiripan dengan pertanyaan FAQ
         ratio = SequenceMatcher(None, user_msg_lower, item["question"].lower()).ratio()
         total_score = keyword_score + (ratio * 1.5)
         
@@ -397,8 +535,8 @@ def generate_faq_response(user_message: str) -> str:
     matched_faq = get_matching_faq(user_message)
     
     if not matched_faq:
-        # Jika tidak ada FAQ yang sangat cocok, berikan semua pertanyaan FAQ sebagai konteks ke Ollama
-        context = "\n\n".join([f"Pertanyaan: {item['question']}\nJawaban: {item['answer']}" for item in FAQ_LIST])
+        # Jika tidak ada FAQ yang sangat cocok, berikan semua pertanyaan FAQ sebagai konteks ke LLM
+        context = "\n\n".join([f"Pertanyaan: {item['question']}\nJawaban: {item['answer']}" for item in FAQ_CACHE])
     else:
         context = f"Pertanyaan: {matched_faq['question']}\nJawaban: {matched_faq['answer']}"
         

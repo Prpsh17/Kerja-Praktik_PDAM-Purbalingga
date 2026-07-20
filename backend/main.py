@@ -152,5 +152,15 @@ async def check_status_endpoint(request: StatusRequest):
             "message": "Nomor laporan tidak ditemukan. Silakan periksa kembali nomor tiket Anda."
         }
 
+@app.post("/api/faqs/sync")
+async def sync_faqs_endpoint():
+    from ai_agent import load_faq_cache
+    try:
+        load_faq_cache()
+        return {"status": "success", "message": "FAQ cache successfully reloaded from database."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal memuat ulang cache FAQ: {str(e)}")
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+

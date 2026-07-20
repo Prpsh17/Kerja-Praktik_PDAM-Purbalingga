@@ -117,3 +117,60 @@ def get_complaint_status(ticket_number: str):
         if connection.is_connected():
             cursor.close()
             connection.close()
+
+def get_all_faqs():
+    connection = get_db_connection()
+    if not connection:
+        return None
+    try:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT id, question, answer, keywords, embedding FROM tbl_faq"
+        cursor.execute(query)
+        result = cursor.fetchall()
+        return result
+    except Error as e:
+        print(f"Error fetching FAQs: {e}")
+        return None
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def insert_faq_with_embedding(question: str, answer: str, keywords: str, embedding_json: str):
+    connection = get_db_connection()
+    if not connection:
+        return False
+    try:
+        cursor = connection.cursor()
+        query = """
+            INSERT INTO tbl_faq (question, answer, keywords, embedding)
+            VALUES (%s, %s, %s, %s)
+        """
+        cursor.execute(query, (question, answer, keywords, embedding_json))
+        connection.commit()
+        return True
+    except Error as e:
+        print(f"Error inserting FAQ: {e}")
+        return False
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def truncate_faqs():
+    connection = get_db_connection()
+    if not connection:
+        return False
+    try:
+        cursor = connection.cursor()
+        cursor.execute("TRUNCATE TABLE tbl_faq")
+        connection.commit()
+        return True
+    except Error as e:
+        print(f"Error truncating FAQs: {e}")
+        return False
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+

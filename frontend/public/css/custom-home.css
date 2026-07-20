@@ -1,0 +1,390 @@
+/* Enhanced smooth scrolling */
+html {
+    scroll-behavior: smooth !important;
+    scroll-padding-top: 80px; /* Account for sticky header */
+}
+
+body {
+    scroll-behavior: smooth !important;
+}
+
+* {
+    scroll-behavior: smooth !important;
+}
+
+/* Container styles */
+.container-custom {
+    @apply container mx-auto px-4 lg:px-8;
+}
+
+/* Section padding */
+.section-padding {
+    @apply py-16 lg:py-24;
+}
+
+/* Hero gradient */
+.hero-gradient {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);
+}
+
+.hero-overlay {
+    background: rgba(30, 58, 138, 0.8);
+}
+
+/* Hero viewport optimization */
+#hero {
+    height: 100vh !important;
+    min-height: 100vh !important; 
+    max-height: 100vh !important;
+}
+
+.hero-carousel {
+    height: 100% !important;
+}
+
+.hero-slide {
+    height: 100% !important;
+}
+
+/* Home navbar transparency */
+.home-navbar {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+html.dark .home-navbar {
+    background: rgba(17, 24, 39, 0.95); /* bg-gray-900 */
+}
+
+/* Ensure viewport height is respected */
+html, body {
+    overflow-x: hidden;
+}
+
+/* Force viewport height for hero */
+section#hero {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    width: 100vw !important;
+    position: relative !important;
+    overflow-x: hidden !important; /* Only hide horizontal overflow */
+}
+
+@media (max-height: 600px) {
+    #hero {
+        height: 600px;
+    }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+    #hero {
+        height: 500px;
+    }
+}
+
+/* Background image optimization for viewport */
+.hero-slide .bg-cover,
+.hero-gradient {
+    background-attachment: fixed;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+}
+
+/* Mobile optimization - disable fixed background on small screens */
+@media (max-width: 768px) {
+    .hero-slide .bg-cover {
+        background-attachment: scroll;
+    }
+}
+
+/* Content centering for viewport */
+.hero-slide .grid,
+.hero-content-wrapper {
+    align-items: center;
+    justify-content: center;
+}
+
+/* Mobile viewport optimization */
+@media (max-width: 640px) {
+    #hero {
+        height: 100vh;
+        height: 100svh; /* Use small viewport height on supported browsers */
+        min-height: 500px;
+    }
+    
+    .hero-slide .container-custom {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
+
+/* Tablet viewport optimization */
+@media (min-width: 641px) and (max-width: 1024px) {
+    #hero {
+        height: 100vh;
+        height: 100dvh; /* Use dynamic viewport height */
+    }
+}
+
+/* Desktop viewport optimization */
+@media (min-width: 1025px) {
+    #hero {
+        height: 100vh;
+    }
+}
+
+/* Prevent content overflow on very small screens */
+@media (max-height: 450px) {
+    .hero-slide .py-20 {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    
+    .hero-slide h1 {
+        font-size: 2rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .hero-slide p {
+        font-size: 1rem !important;
+        margin-bottom: 1.5rem !important;
+    }
+}
+
+/* Button styles */
+.btn-primary {
+    @apply inline-flex items-center px-8 py-4 bg-white text-blue-600 font-semibold rounded-full hover:bg-blue-50 hover:shadow-lg transform hover:scale-105 transition-all duration-300 shadow-md;
+}
+
+.btn-secondary {
+    @apply inline-flex items-center px-8 py-4 bg-transparent text-white font-semibold rounded-full border-2 border-white hover:bg-white hover:text-blue-600 transform hover:scale-105 transition-all duration-300;
+}
+
+/* Hero text positioning - enhanced with navbar clearance */
+.hero-slide .grid {
+    align-items: center;
+    padding-top: 150px; /* Increased clearance from navbar */
+    min-height: calc(100vh - 150px);
+}
+
+/* Hero content spacing to avoid navbar overlap */
+.hero-slide .container-custom {
+    position: relative;
+    z-index: 10;
+}
+
+@media (max-width: 768px) {
+    .hero-slide .grid {
+        align-items: center;
+        padding-top: 120px; /* Increased for tablet */
+        min-height: calc(100vh - 120px);
+    }
+}
+
+@media (max-width: 640px) {
+    .hero-slide .grid {
+        padding-top: 100px; /* Increased for mobile */
+        min-height: calc(100vh - 100px);
+    }
+}
+
+/* Fallback hero positioning */
+.fallback-hero .flex {
+    padding-top: 150px; /* Increased clearance */
+    min-height: calc(100vh - 150px);
+}
+
+@media (max-width: 768px) {
+    .fallback-hero .flex {
+        padding-top: 120px;
+        min-height: calc(100vh - 120px);
+    }
+}
+
+/* Animation delays */
+.animation-delay-200 { animation-delay: 200ms; }
+.animation-delay-400 { animation-delay: 400ms; }
+.animation-delay-600 { animation-delay: 600ms; }
+
+/* Fade in animation - only active after page load to not block LCP */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* animate-fadeInUp is added via JS after page load - no opacity:0 initial state */
+.js-loaded .animate-fadeInUp {
+    animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.js-loaded .animation-delay-200 { animation-delay: 0.2s; }
+.js-loaded .animation-delay-400 { animation-delay: 0.4s; }
+.js-loaded .animation-delay-600 { animation-delay: 0.6s; }
+
+/* Hero carousel styles:
+   First slide is visible by default (has .active in HTML).
+   Transition added by JS after first paint so LCP is not delayed. */
+.hero-slide {
+    opacity: 0;
+    visibility: hidden;
+    /* No transition by default - added via JS after load */
+}
+
+.hero-slide.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Transition only applied after JS initializes the carousel */
+.carousel-ready .hero-slide {
+    transition: opacity 1s ease-in-out, visibility 1s ease-in-out;
+}
+
+.hero-nav {
+    transition: all 0.3s ease;
+}
+
+.hero-nav:hover {
+    transform: scale(1.1);
+}
+
+.hero-dot.active {
+    transform: scale(1.2);
+}
+
+/* Card styles */
+.card {
+    @apply bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+}
+
+/* Stats animation */
+.stat-number {
+    @apply text-3xl lg:text-4xl font-bold text-blue-600 mb-2;
+}
+
+/* Service card hover effect */
+.service-card {
+    @apply bg-white rounded-xl p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 group;
+}
+
+.service-card:hover {
+    @apply border-blue-200 transform -translate-y-1;
+}
+
+/* News card styles */
+.news-card {
+    @apply bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group;
+}
+
+.news-card:hover {
+    @apply transform -translate-y-1;
+}
+
+/* Form styles */
+.form-input {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200;
+}
+
+.form-textarea {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none;
+}
+
+.form-select {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200;
+}
+
+/* Footer link styles */
+.footer-link {
+    @apply text-blue-200 hover:text-white transition-colors duration-200;
+}
+
+/* Social links */
+.social-link {
+    @apply text-blue-200 hover:text-white transition-all duration-200 transform hover:scale-110;
+}
+
+/* Loading animation for stats */
+.loading-number {
+    animation: countUp 2s ease-out forwards;
+}
+
+@keyframes countUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Enhanced image hover effects */
+.image-hover {
+    transition: all 0.3s ease;
+}
+
+.image-hover:hover {
+    transform: scale(1.05);
+}
+
+/* Gradient text */
+.gradient-text {
+    background: linear-gradient(135deg, #2563eb, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Enhanced shadows */
+.shadow-blue {
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.1);
+}
+
+.shadow-blue:hover {
+    box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
+}
+
+/* Partnership Slider Styles */
+.partnership-slider-container {
+    height: 120px;
+}
+
+.partnership-track {
+    will-change: transform;
+}
+
+.partnership-item {
+    min-width: 128px;
+}
+
+.partnership-fade-left,
+.partnership-fade-right {
+    pointer-events: none;
+}
+
+.partnership-fade-left {
+    background: linear-gradient(to right, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 100%);
+}
+html.dark .partnership-fade-left {
+    background: linear-gradient(to right, rgba(17, 24, 39, 1) 0%, rgba(17, 24, 39, 0) 100%);
+}
+
+.partnership-fade-right {
+    background: linear-gradient(to left, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 100%);
+}
+html.dark .partnership-fade-right {
+    background: linear-gradient(to left, rgba(17, 24, 39, 1) 0%, rgba(17, 24, 39, 0) 100%);
+}

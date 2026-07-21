@@ -477,16 +477,34 @@ load_faq_cache()
 
 def get_matching_faq(user_message: str):
     """
-    Mencocokkan pesan user dengan FAQ menggunakan Semantic Search (Cosine Similarity).
-    Jika FAQ tidak memiliki embedding (misal fallback), gunakan keyword/SequenceMatcher.
+    Mencocokkan pesan user dengan FAQ menggunakan Keyword Match terlebih dahulu,
+    lalu Semantic Search (Cosine Similarity) sebagai fallback.
     """
     global FAQ_CACHE
     if not FAQ_CACHE:
         load_faq_cache()
         
-    user_msg_lower = user_message.lower()
+    user_msg_lower = user_message.lower().strip()
     
-    # 1. Coba Semantic Search terlebih dahulu jika model embedding dikonfigurasi & cache memiliki embedding
+    # 0. Cek kecocokan keyword secara persis terlebih dahulu (Menghemat API & Menghindari False Positive)
+    exact_keyword_match = None
+    max_keyword_len = 0
+    import re
+    for item in FAQ_CACHE:
+        for keyword in item["keywords"]:
+            kw = keyword.lower().strip()
+            # Hanya cocokkan jika kata kunci berupa kata penuh di dalam pesan user
+            pattern = r'\b' + re.escape(kw) + r'\b'
+            if re.search(pattern, user_msg_lower):
+                if len(kw) > max_keyword_len:
+                    max_keyword_len = len(kw)
+                    exact_keyword_match = item
+                    
+    if exact_keyword_match:
+        logger.info(f"[get_matching_faq] Kecocokan keyword persis ditemukan: '{exact_keyword_match['question']}'")
+        return exact_keyword_match
+    
+    # 1. Coba Semantic Search jika model embedding dikonfigurasi & cache memiliki embedding
     has_embeddings = any(item["embedding"] is not None for item in FAQ_CACHE)
     if has_embeddings:
         try:
@@ -502,9 +520,8 @@ def get_matching_faq(user_message: str):
                             max_sim = sim
                             best_match = item
                 
-                logger.info(f"[get_matching_faq] Hasil Semantic Search: kemiripan tertinggi = {max_sim:.4f}")
-                # Ambang batas (threshold) kecocokan semantic search, misalnya 0.50
-                if max_sim >= 0.50:
+                # Naikkan ambang batas (threshold) dari 0.50 ke 0.60 agar tidak terjadi kecocokan salah
+                if max_sim >= 0.60:
                     return best_match
         except Exception as e:
             logger.error(f"[get_matching_faq] Error saat semantic search: {e}")

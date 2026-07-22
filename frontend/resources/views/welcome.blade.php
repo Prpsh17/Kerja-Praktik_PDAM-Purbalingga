@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="605G3jmlI7Ht2BuIiz3pAi4t7CHoe4iMBoSf5cbC">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>Beranda - Perumda Air Minum Tirta Perwira Purbalingga</title>
     <meta name="description" content="Perumda Air Minum Tirta Perwira Purbalingga melayani dengan hati untuk memberikan air bersih berkualitas. Temukan informasi layanan, tarif, dan berita terkini.">

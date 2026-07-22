@@ -12,19 +12,18 @@ FAQ_LIST = [
             "2. Meterai Rp 10.000.\n"
             "3. Fotokopi KTP Pemohon yang masih berlaku\n"
             "4. Fotokopi Kartu Keluarga.\n"
-            "5. Mendownload dan mengisi formulir SPL PDAM 2025\n"
-            "pdampurbalingga.co.id/layanan/pemasangan-sambungan-baru"
+            "5. Mendownload dan mengisi formulir SPL PDAM 2025 di [halaman ini](https://pdampurbalingga.co.id/layanan/pemasangan-sambungan-baru)"
         )
     },
     {
-        "keywords": ["tarif", "biaya air", "harga air", "golongan"],
+        "keywords": ["tarif", "biaya air", "harga air", "golongan", "biaya tetap", "biaya layanan"],
         "question": "Berapa tarif air PDAM Purbalingga?",
         "answer": (
             "Tarif air PDAM Purbalingga dihitung per meter kubik (m3) dan disesuaikan berdasarkan golongan pelanggan:\n"
             "• Golongan Sosial: Tarif mulai dari Rp 1.500/m3.\n"
             "• Golongan Rumah Tangga: Mulai dari Rp 3.000/m3 untuk pemakaian dasar (1-10 m3).\n"
             "• Golongan Niaga/Industri: Disesuaikan berdasarkan klasifikasi usaha.\n"
-            "Detail lengkap tarif per kubik dapat ditanyakan langsung di kantor pelayanan terdekat."
+            "Detail lengkap tarif per kubik dapat dilihat di [Website Resmi PDAM Purbalingga](https://pdampurbalingga.co.id/tarif)"
         )
     },
     {
@@ -39,13 +38,26 @@ FAQ_LIST = [
         )
     },
     {
-        "keywords": ["jam pelayanan", "buka kantor", "loket", "jam kerja"],
-        "question": "Kapan jam pelayanan kantor dan loket pembayaran PDAM?",
+        "keywords": ["cabang", "alamat cabang", "lokasi cabang", "kantor cabang", "cabang pdam dimana"],
+        "question": "Di mana saja alamat kantor cabang PDAM Purbalingga?",
         "answer": (
-            "Jam operasional pelayanan kantor PDAM Purbalingga adalah:\n"
-            "• Senin - Kamis: Pukul 07:00 s.d 15:00 WIB\n"
-            "• Jumat: Pukul 07:00 s.d 11:00 WIB\n"
-            "• Sabtu & Minggu: Kantor pelayanan libur. Pengaduan darurat tetap dilayani melalui media sosial/chatbot."
+            "Berikut adalah daftar Cabang Pelayanan PDAM Purbalingga (Perumdam Tirta Perwira):\n"
+            "1. Cabang Kota Bangga\n   📍 Jl. Letjend S. Parman No. 62, Purbalingga\n   🗺️ [Buka di Google Maps](https://maps.google.com/?q=PDAM+Purbalingga+Cabang+Kota+Bangga)\n"
+            "2. Cabang Jenderal Soedirman\n   📍 Jl. Raya Rupakpicis, Klapasawit, Kec. Kalimanah\n   🗺️ [Buka di Google Maps](https://maps.google.com/?q=PDAM+Purbalingga+Cabang+Jenderal+Soedirman)\n"
+            "3. Cabang Usman Janatin\n   📍 Jl. Raya Karangnangka, Kec. Mrebet\n   🗺️ [Buka di Google Maps](https://maps.google.com/?q=PDAM+Purbalingga+Cabang+Usman+Janatin)\n"
+            "4. Cabang Goentoer Darjono\n   📍 Jl. Kalikajar, Dusun 1, Kaligondang\n   🗺️ [Buka di Google Maps](https://maps.google.com/?q=PDAM+Purbalingga+Cabang+Goentoer+Darjono)\n"
+            "5. Cabang Ardilawet\n   📍 Jl. Raya Tobong, Dusun I, Karanglewas, Kec. Kutasari\n   🗺️ [Buka di Google Maps](https://maps.google.com/?q=PDAM+Purbalingga+Cabang+Ardilawet)"
+        )
+    },
+    {
+        "keywords": ["jam pelayanan", "buka kantor", "loket", "jam kerja", "operasional", "jam berapa buka", "kapan tutup", "jadwal buka"],
+        "question": "Kapan jam operasional pelayanan kantor PDAM Purbalingga?",
+        "answer": (
+            "Jam Operasional Pelayanan Kantor PDAM Purbalingga adalah sebagai berikut:\n"
+            "• Senin - Kamis: 07:30 - 15:00 WIB\n"
+            "• Jumat: 07:30 - 11:00 WIB\n"
+            "• Sabtu: 07:30 - 13:00 WIB\n"
+            "• Minggu & Hari Libur Nasional: Tutup"
         )
     },
     {
@@ -99,14 +111,15 @@ FAQ_LIST = [
         )
     },
     {
-        "keywords": ["lokasi pdam", "alamat pdam", "kantor pdam", "pdam purbalingga dimana", "lokasi kantor", "alamat kantor", "alamat pusat"],
-        "question": "Alamat lokasi kantor pusat dan kontak resmi PDAM Purbalingga.",
+        "keywords": ["lokasi pdam", "alamat pdam", "kantor pdam", "pdam purbalingga dimana", "lokasi kantor", "alamat kantor", "alamat pusat", "pusat", "dimana"],
+        "question": "Di mana alamat lokasi kantor pusat PDAM Purbalingga?",
         "answer": (
             "Kantor pusat Perumda Air Minum (PDAM) Tirta Perwira Kabupaten Purbalingga berlokasi di:\n"
             "📍 Jl. Letjen S. Parman No. 62, Purbalingga, Jawa Tengah 53311.\n"
+            "🗺️ [Buka di Google Maps](https://maps.google.com/?q=PDAM+Purbalingga+Kantor+Pusat)\n"
             "📞 Telepon: (0281) 891706\n"
             "📧 Email: mail@pdampurbalingga.co.id\n"
-            "🌐 Website Resmi: https://pdampurbalingga.co.id"
+            "🌐 Website Resmi: [pdampurbalingga.co.id](https://pdampurbalingga.co.id)"
         )
     },
     {
@@ -156,6 +169,33 @@ FAQ_LIST = [
         "answer": (
             "Air yang didistribusikan PDAM telah melalui proses sterilisasi dan memenuhi standar kebersihan untuk MCK (Mandi, Cuci, Kakus).\n"
             "Namun, air PDAM TIDAK direkomendasikan untuk langsung diminum langsung dari kran tanpa dimasak terlebih dahulu. Demi kesehatan, pastikan Anda merebus air hingga mendidih (100°C) sebelum dikonsumsi."
+        )
+    },
+    {
+        "keywords": ["sejarah", "kapan berdiri", "didirikan", "asal usul", "tirta perwira"],
+        "question": "Bagaimana sejarah berdirinya PDAM Purbalingga?",
+        "answer": (
+            "Perumda Air Minum Tirta Perwira (PDAM Purbalingga) didirikan pada tahun 1968. "
+            "Namun, pelayanan air minum di Purbalingga sebenarnya sudah dimulai sejak tahun 1928 pada masa kolonial Belanda, dengan kapasitas awal 28,6 L/detik dari sumber Kawung Carang.\n"
+            "Pada tahun 2019, status hukumnya resmi berubah menjadi Perusahaan Umum Daerah (Perumdam) Air Minum Tirta Perwira. "
+            "Saat ini kami telah melayani lebih dari 60.000 pelanggan dan terus berekspansi memproduksi Air Minum Dalam Kemasan (AMDK)."
+        )
+    },
+    {
+        "keywords": ["sumber air", "mata air", "sumber mata air", "air baku", "darimana air"],
+        "question": "Dari mana sumber mata air yang dikelola PDAM Purbalingga?",
+        "answer": (
+            "PDAM Purbalingga mengelola beberapa sumber mata air utama, di antaranya:\n"
+            "1. Mata Air Teleng Walik (Kutasari) - 171,94 L/detik\n"
+            "2. Mulang 1 & 2 (Karangcegak) - >100 L/detik\n"
+            "3. Situ Kajongan (Bojongsari) - 67,28 L/detik\n"
+            "4. Pajerukan 1 & 2 (Padamara) - 52,05 L/detik\n"
+            "5. Limpak Dau (Munjul) - 45,92 L/detik\n"
+            "6. Bata Putih (Cipaku) - 40,76 L/detik\n"
+            "7. Tuk Arus (Sangkanayu) - 32,98 L/detik\n"
+            "8. Wadas Kelir (Candiwulan) - 17,39 L/detik\n"
+            "9. Tlagayasa (Bobotsari) - 8,00 L/detik\n"
+            "Serta sumber cadangan/lainnya seperti Si Kopyah, Mudal Teleng, Mudal Picung, Kali Gintung, Pingen, dan Tuk Ringin."
         )
     }
 ]

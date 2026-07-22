@@ -2,15 +2,24 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
+import os
 from database import get_unpaid_billing
-from ai_agent import extract_intent, generate_billing_response
+from ai_agent import extract_intent, generate_billing_response, check_thank_you, check_greeting
 
 app = FastAPI(title="PDAM Chatbot API")
 
-# Setup CORS agar Frontend Laravel bisa memanggil API ini
+# Setup CORS — Origins dibaca dari env agar aman di production
+_raw_origins = [
+    os.getenv("ALLOWED_ORIGIN_1", "http://localhost:8000"),
+    os.getenv("ALLOWED_ORIGIN_2", ""),
+    os.getenv("ALLOWED_ORIGIN_3", ""),
+]
+# Filter string kosong agar tidak menjadi wildcard tidak sengaja
+allowed_origins = [o.strip() for o in _raw_origins if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Dalam production, ganti dengan URL Laravel, misal ["http://localhost:8000"]
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,6 +46,16 @@ class StatusRequest(BaseModel):
 async def chat_endpoint(request: ChatRequest):
     user_msg = request.message
     
+    # 0. Cek ucapan terima kasih secara lokal (hemat token & respon instan)
+    thank_you_reply = check_thank_you(user_msg)
+    if thank_you_reply:
+        return ChatResponse(reply=thank_you_reply, intent="GENERAL")
+        
+    # Cek ucapan sapaan/halo secara lokal
+    greeting_reply = check_greeting(user_msg)
+    if greeting_reply:
+        return ChatResponse(reply=greeting_reply, intent="GENERAL")
+        
     # 1. Ekstrak Intent menggunakan Gemini
     ai_result = extract_intent(user_msg)
     intent = ai_result.get("intent", "GENERAL")

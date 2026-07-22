@@ -81,10 +81,10 @@ def seed_data():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Bersihkan data lama agar tidak duplikat saat dijalankan ulang
-    print("Clearing old FAQ data from tbl_faq...")
-    cursor.execute("TRUNCATE TABLE tbl_faq")
-    conn.commit()
+    # Ambil data pertanyaan yang sudah ada di database
+    print("Mengecek data FAQ yang sudah ada di database...")
+    cursor.execute("SELECT question FROM tbl_faq")
+    existing_questions = {row[0] for row in cursor.fetchall()}
     
     print(f"Starting seeding of {len(FAQ_LIST)} FAQ items using model '{OPENROUTER_EMBEDDING_MODEL}'...")
     
@@ -93,7 +93,19 @@ def seed_data():
         answer = item["answer"]
         keywords_str = ",".join(item["keywords"])
         
-        print(f"[{index+1}/{len(FAQ_LIST)}] Generating embedding for: '{question[:40]}...'")
+        if question in existing_questions:
+            print(f"[{index+1}/{len(FAQ_LIST)}] Skipping embedding (already exists), updating answer/keywords for: '{question[:40]}...'")
+            try:
+                update_query = """
+                UPDATE tbl_faq SET answer = %s, keywords = %s WHERE question = %s
+                """
+                cursor.execute(update_query, (answer, keywords_str, question))
+                conn.commit()
+            except Exception as e:
+                print(f"  -> ERROR updating '{question}': {e}")
+            continue
+            
+        print(f"[{index+1}/{len(FAQ_LIST)}] Generating embedding for new FAQ: '{question[:40]}...'")
         
         try:
             embedding_vector = get_embedding_from_openrouter(question)

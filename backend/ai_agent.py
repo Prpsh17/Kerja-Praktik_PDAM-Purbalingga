@@ -114,6 +114,55 @@ def clean_chinese_characters(text: str) -> str:
     return re.sub(r'[ \t]+', ' ', cleaned).strip()
 
 
+def check_thank_you(message: str) -> str:
+    """Mengecek apakah user mengucapkan terima kasih, jika iya, return jawaban hardcode."""
+    msg = message.lower().strip()
+    
+    # Kumpulan keyword ucapan terima kasih
+    thank_you_keywords = [
+        "terima kasih", "terimakasih", "makasih", "suwun", "thank you", "thanks", "matur nuwun", "hatur nuhun"
+    ]
+    
+    import re
+    for kw in thank_you_keywords:
+        pattern = r'\b' + re.escape(kw) + r'\b'
+        if re.search(pattern, msg):
+            return "Sama-sama! Senang bisa membantu Anda. Jika ada hal lain yang ditanyakan, silakan hubungi kami kembali. 😊"
+            
+    return None
+
+
+def check_greeting(message: str) -> str:
+    """Mengecek apakah user mengirimkan sapaan saja, jika iya, return jawaban hardcode."""
+    msg = message.lower().strip()
+    
+    # Kumpulan kata sapaan dasar
+    greetings = [
+        "halo", "hai", "hello", "hi", "p", "spada", "ping", "test", "hallo", "hola", "tes", "hei",
+        "assalamualaikum", "assalamu'alaikum", "misi", "permisi",
+        "selamat pagi", "selamat siang", "selamat sore", "selamat malam"
+    ]
+    
+    # Bersihkan tanda baca untuk pengecekan
+    import re
+    clean_msg = re.sub(r'[^\w\s]', '', msg).strip()
+    words = clean_msg.split()
+    
+    if not words:
+        return None
+        
+    # Jika jumlah kata <= 3, dan pesan diawali oleh salah satu kata sapaan
+    if len(words) <= 3:
+        starts_with_greet = any(clean_msg.startswith(g) for g in greetings)
+        if starts_with_greet:
+            # Pengecekan tambahan agar kata-kata penting/intent lain tidak ikut tersaring
+            excluded_keywords = ["tagihan", "bayar", "lapor", "keluhan", "aduan", "bocor", "mati", "keruh", "tarif", "harga", "alamat", "nomor", "nomer", "daftar", "syarat", "lokasi", "kantor", "jam", "buka", "tutup"]
+            if not any(ekw in clean_msg for ekw in excluded_keywords):
+                return "Halo! 👋 Saya Asisten Virtual PDAM Purbalingga. Ada yang bisa saya bantu hari ini? Anda bisa menanyakan info tagihan, cara pembayaran, melaporkan keluhan, atau informasi layanan lainnya. 😊"
+            
+    return None
+
+
 def extract_intent(user_message: str):
     """
     [STEP 1] Menggunakan Ollama untuk mengekstrak intent dan nomor pelanggan.
@@ -564,7 +613,8 @@ def generate_faq_response(user_message: str) -> str:
         "2. DILARANG KERAS menghilangkan langkah-langkah solusi teknis penting (seperti mengecek stop kran engkol meteran, melakukan pembilasan/flushing, dll) jika tertulis di dalam jawaban FAQ.\n"
         "3. JANGAN mengarang informasi di luar konteks FAQ.\n"
         "4. Jawab dalam Bahasa Indonesia murni yang jelas dan terstruktur.\n"
-        "5. Gunakan emoji 1-2 saja."
+        "5. Gunakan emoji 1-2 saja.\n"
+        "6. WAJIB mempertahankan format tautan/link markdown seperti [Teks](URL) persis seperti di konteks."
     )
     
     prompt = (

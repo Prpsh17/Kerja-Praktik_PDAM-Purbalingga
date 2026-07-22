@@ -1,0 +1,27 @@
+[Unit]
+Description=PDAM Chatbot FastAPI Backend
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=exec
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/pdam-chatbot/backend
+EnvironmentFile=/var/www/pdam-chatbot/backend/.env
+ExecStart=/var/www/pdam-chatbot/backend/venv/bin/gunicorn \
+    main:app \
+    --workers 2 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 127.0.0.1:8001 \
+    --timeout 120 \
+    --log-level info \
+    --access-logfile /var/log/pdam-chatbot/access.log \
+    --error-logfile /var/log/pdam-chatbot/error.log
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/var/log/pdam-chatbot/stdout.log
+StandardError=append:/var/log/pdam-chatbot/stderr.log
+
+[Install]
+WantedBy=multi-user.target

@@ -397,14 +397,14 @@
         const chatInputArea = document.getElementById('chat-input-area');
         const btnBackToMenu = document.getElementById('btn-back-to-menu');
 
-        // URL API ke FastAPI Python Backend Anda
-        const API_URL = 'http://localhost:8001/api/chat';
-        
-        // URL API ke FastAPI Python Backend Anda
-        const COMPLAINT_API_URL = 'http://localhost:8001/api/complaints';
-        const STATUS_API_URL = 'http://localhost:8001/api/complaints/status';
+        // URL API ke FastAPI Python Backend
+        // Nilai diambil dari env variable CHATBOT_API_URL di file .env Laravel
+        const API_URL = '{{ env("CHATBOT_API_URL", "http://localhost:8001") }}/api/chat';
+        const COMPLAINT_API_URL = '{{ env("CHATBOT_API_URL", "http://localhost:8001") }}/api/complaints';
+        const STATUS_API_URL = '{{ env("CHATBOT_API_URL", "http://localhost:8001") }}/api/complaints/status';
 
         let isOpen = false;
+        let isSending = false;
         
         // State Machine untuk Pelaporan Keluhan Lokal
         let reportState = 'NORMAL'; // NORMAL, WAITING_NAME, WAITING_ADDRESS, WAITING_PHONE, WAITING_COMPLAINT, WAITING_TICKET_STATUS, WAITING_BILL_CHECK
@@ -507,6 +507,20 @@
         function disableChatInput() {
             messageInput.disabled = true;
             messageInput.placeholder = "Silakan isi formulir keluhan di atas...";
+            messageInput.classList.remove('bg-slate-50', 'focus:bg-white', 'focus:ring-2', 'focus:ring-pdam-blue');
+            messageInput.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+            
+            const submitBtn = chatForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.classList.remove('bg-pdam-blue', 'hover:bg-pdam-bluelight');
+                submitBtn.classList.add('bg-slate-300', 'cursor-not-allowed', 'opacity-60');
+            }
+        }
+
+        function disableChatInputLoading() {
+            messageInput.disabled = true;
+            messageInput.placeholder = "Asisten sedang mengetik...";
             messageInput.classList.remove('bg-slate-50', 'focus:bg-white', 'focus:ring-2', 'focus:ring-pdam-blue');
             messageInput.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
             
@@ -714,9 +728,12 @@
         // Handle Pengiriman Pesan Form
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (messageInput.disabled) return;
+            if (isSending || messageInput.disabled) return;
             const message = messageInput.value.trim();
             if (!message) return;
+
+            isSending = true;
+            disableChatInputLoading();
 
             // 1. Tampilkan pesan user di widget
             appendMessage(message, true);
@@ -726,159 +743,173 @@
             if (reportState !== 'NORMAL' && message.toLowerCase() === 'batal') {
                 showDashboard();
                 appendMessage("❌ Alur saat ini telah dibatalkan. Kembali ke menu utama.", false);
+                isSending = false;
                 return;
             }
 
-            // 2. State Machine Pengaduan (Lokal)
-            if (reportState !== 'NORMAL') {
-                if (reportState === 'WAITING_TICKET_STATUS') {
-                    const ticketNumber = message;
-                    showTyping();
-                    
-                    try {
-                        const response = await fetch(STATUS_API_URL, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ ticket_number: ticketNumber })
-                        });
-                        
-                        hideTyping();
-                        
-                        if (response.ok) {
-                            let data = await response.json();
-                            
-                            // Jika respons dibungkus dalam array, ambil objek pertama
-                            if (Array.isArray(data) && data.length > 0) {
-                                data = data[0];
-                            }
-                            
-                            const statusId = data.status_id;
-                            let statusText = "Sedang Diproses ⏳";
-                            if (statusId == 1) {
-                                statusText = "Dilaporkan 📝";
-                            } else if (statusId == 2) {
-                                statusText = "Pengecekan 🔍";
-                            } else if (statusId == 3) {
-                                statusText = "Pengerjaan 🛠️";
-                            } else if (statusId == 4) {
-                                statusText = "Selesai / Teratasi ✅";
-                            } else if (statusId === null || statusId === undefined || statusId === '') {
-                                statusText = "Tidak Ditemukan ❌";
-                            }
-                            const msgText = data.message || "Laporan Anda sedang berada dalam penanganan oleh tim teknis kami.";
-                            
-                            appendMessage(
-                                `🔍 **Hasil Pelacakan Laporan Keluhan**\n\n` +
-                                `• Nomor Laporan: **${ticketNumber}**\n` +
-                                `• Status: **${statusText}**\n\n` +
-                                `${msgText}\n\n` +
-                                `---\n` +
-                                `Silakan masukkan **Nomor Tiket Laporan** lainnya untuk mengecek kembali, atau ketik **"batal"** untuk kembali ke menu utama.`,
-                                false
-                            );
-                        } else {
-                            throw new Error("Gagal mengambil data dari backend");
-                        }
-                    } catch (error) {
-                        console.error("Error fetching status from backend:", error);
-                        hideTyping();
-                        appendMessage(
-                            `⚠️ **Sistem Pelacakan Sedang Gangguan**\n\n` +
-                            `Maaf, sistem pelacakan status keluhan saat ini sedang offline atau mengalami gangguan. Mohon mencoba kembali beberapa saat lagi.`,
-                            false
-                        );
-                    }
-                    return;
-                } else if (reportState === 'WAITING_BILL_CHECK') {
-                    // Cek format angka
-                    const cleanMsg = message.replace(/\s+/g, '');
-                    const numMatch = cleanMsg.match(/\b\d{8,}\b/);
-                    
-                    if (!numMatch) {
-                        appendMessage(
-                            `⚠️ **Format Salah**\n\n` +
-                            `Nomor pelanggan harus berupa angka minimal 8 digit.\n` +
-                            `Silakan masukkan **Nomor Pelanggan** Anda kembali, atau ketik **"batal"** untuk kembali ke menu utama.`,
-                            false
-                        );
-                        return;
-                    }
-                    
-                    const noPelanggan = numMatch[0];
-                    showTyping();
-                    
-                    try {
-                        const response = await fetch(API_URL, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify({ message: "cek tagihan " + noPelanggan })
-                        });
-
-                        const data = await response.json();
-                        hideTyping();
-                        
-                        if (data && data.reply) {
-                            appendMessage(
-                                `${data.reply}\n\n` +
-                                `---\n` +
-                                `Silakan masukkan **Nomor Pelanggan** lainnya untuk mengecek kembali, atau ketik **"batal"** untuk kembali ke menu utama.`,
-                                false
-                            );
-                        } else {
-                            appendMessage("Maaf, format respons dari server tidak dikenali.", false);
-                        }
-                    } catch (error) {
-                        console.error("Error checking bill from backend:", error);
-                        hideTyping();
-                        appendMessage(
-                            `⚠️ **Koneksi Bermasalah**\n\n` +
-                            `Gagal menghubungkan ke database tagihan. Silakan cek koneksi backend Anda.`,
-                            false
-                        );
-                    }
-                    return;
-                }
-            }
-
-            // 3. Jalankan alur normal (Ollama AI) jika state NORMAL
-            showTyping();
+            let shouldReenable = true;
 
             try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ message: message })
-                });
-
-                const data = await response.json();
-                hideTyping();
-                
-                if (data && data.reply) {
-                    appendMessage(data.reply, false);
-                    
-                    if (data.intent === 'LAPOR_KELUHAN') {
+                // 2. State Machine Pengaduan (Lokal)
+                if (reportState !== 'NORMAL') {
+                    if (reportState === 'WAITING_TICKET_STATUS') {
+                        const ticketNumber = message;
                         showTyping();
-                        setTimeout(() => {
+                        
+                        try {
+                            const response = await fetch(STATUS_API_URL, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ ticket_number: ticketNumber })
+                            });
+                            
                             hideTyping();
-                            startLocalLaporFlow();
-                        }, 1000);
+                            
+                            if (response.ok) {
+                                let data = await response.json();
+                                
+                                // Jika respons dibungkus dalam array, ambil objek pertama
+                                if (Array.isArray(data) && data.length > 0) {
+                                    data = data[0];
+                                }
+                                
+                                const statusId = data.status_id;
+                                let statusText = "Sedang Diproses ⏳";
+                                if (statusId == 1) {
+                                    statusText = "Dilaporkan 📝";
+                                } else if (statusId == 2) {
+                                    statusText = "Pengecekan 🔍";
+                                } else if (statusId == 3) {
+                                    statusText = "Pengerjaan 🛠️";
+                                } else if (statusId == 4) {
+                                    statusText = "Selesai / Teratasi ✅";
+                                } else if (statusId === null || statusId === undefined || statusId === '') {
+                                    statusText = "Tidak Ditemukan ❌";
+                                }
+                                const msgText = data.message || "Laporan Anda sedang berada dalam penanganan oleh tim teknis kami.";
+                                
+                                appendMessage(
+                                    `🔍 **Hasil Pelacakan Laporan Keluhan**\n\n` +
+                                    `• Nomor Laporan: **${ticketNumber}**\n` +
+                                    `• Status: **${statusText}**\n\n` +
+                                    `${msgText}\n\n` +
+                                    `---\n` +
+                                    `Silakan masukkan **Nomor Tiket Laporan** lainnya untuk mengecek kembali, atau ketik **"batal"** untuk kembali ke menu utama.`,
+                                    false
+                                );
+                            } else {
+                                throw new Error("Gagal mengambil data dari backend");
+                            }
+                        } catch (error) {
+                            console.error("Error fetching status from backend:", error);
+                            hideTyping();
+                            appendMessage(
+                                `⚠️ **Sistem Pelacakan Sedang Gangguan**\n\n` +
+                                `Maaf, sistem pelacakan status keluhan saat ini sedang offline atau mengalami gangguan. Mohon mencoba kembali beberapa saat lagi.`,
+                                false
+                            );
+                        }
+                        return;
+                    } else if (reportState === 'WAITING_BILL_CHECK') {
+                        // Cek format angka
+                        const cleanMsg = message.replace(/\s+/g, '');
+                        const numMatch = cleanMsg.match(/\b\d{8,}\b/);
+                        
+                        if (!numMatch) {
+                            appendMessage(
+                                `⚠️ **Format Salah**\n\n` +
+                                `Nomor pelanggan harus berupa angka minimal 8 digit.\n` +
+                                `Silakan masukkan **Nomor Pelanggan** Anda kembali, atau ketik **"batal"** untuk kembali ke menu utama.`,
+                                false
+                            );
+                            return;
+                        }
+                        
+                        const noPelanggan = numMatch[0];
+                        showTyping();
+                        
+                        try {
+                            const response = await fetch(API_URL, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({ message: "cek tagihan " + noPelanggan })
+                            });
+
+                            const data = await response.json();
+                            hideTyping();
+                            
+                            if (data && data.reply) {
+                                appendMessage(
+                                    `${data.reply}\n\n` +
+                                    `---\n` +
+                                    `Silakan masukkan **Nomor Pelanggan** lainnya untuk mengecek kembali, atau ketik **"batal"** untuk kembali ke menu utama.`,
+                                    false
+                                );
+                            } else {
+                                appendMessage("Maaf, format respons dari server tidak dikenali.", false);
+                            }
+                        } catch (error) {
+                            console.error("Error checking bill from backend:", error);
+                            hideTyping();
+                            appendMessage(
+                                `⚠️ **Koneksi Bermasalah**\n\n` +
+                                `Gagal menghubungkan ke database tagihan. Silakan cek koneksi backend Anda.`,
+                                false
+                            );
+                        }
+                        return;
                     }
-                } else {
-                    appendMessage("Maaf, format respons dari server tidak dikenali.", false);
                 }
 
-            } catch (error) {
-                console.error("Error connecting to backend:", error);
-                hideTyping();
-                appendMessage("Maaf, tidak dapat terhubung ke server asisten virtual. Pastikan API backend python pada port 8001 sudah menyala.", false);
+                // 3. Jalankan alur normal (Ollama AI) jika state NORMAL
+                showTyping();
+
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ message: message })
+                    });
+
+                    const data = await response.json();
+                    hideTyping();
+                    
+                    if (data && data.reply) {
+                        appendMessage(data.reply, false);
+                        
+                        if (data.intent === 'LAPOR_KELUHAN') {
+                            shouldReenable = false; // transisi ke lapor flow, biarkan tetap disabled
+                            showTyping();
+                            setTimeout(() => {
+                                hideTyping();
+                                startLocalLaporFlow();
+                            }, 1000);
+                        }
+                    } else {
+                        appendMessage("Maaf, format respons dari server tidak dikenali.", false);
+                    }
+
+                } catch (error) {
+                    console.error("Error connecting to backend:", error);
+                    hideTyping();
+                    appendMessage("Maaf, tidak dapat terhubung ke server asisten virtual. Pastikan API backend python pada port 8001 sudah menyala.", false);
+                }
+            } finally {
+                if (shouldReenable) {
+                    isSending = false;
+                    enableChatInput();
+                    messageInput.focus();
+                } else {
+                    isSending = false;
+                }
             }
         });
     

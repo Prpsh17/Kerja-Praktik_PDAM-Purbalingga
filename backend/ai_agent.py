@@ -3,6 +3,7 @@ import requests
 import json
 import logging
 from dotenv import load_dotenv
+from groq import Groq
 
 load_dotenv()
 
@@ -13,56 +14,41 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Konfigurasi OpenRouter
+# Konfigurasi OpenRouter (Tetap dipertahankan untuk Embedding)
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-4-31b-it:free").strip()
 OPENROUTER_EMBEDDING_MODEL = os.getenv("OPENROUTER_EMBEDDING_MODEL", "nvidia/nemotron-3-embed-1b:free").strip()
 
+# Konfigurasi Groq
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
+
+# Inisialisasi client Groq
+groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
 def call_llm(prompt: str, system_prompt: str = ""):
-    """Fungsi helper untuk menembak API OpenRouter (Cloud)."""
-    if not OPENROUTER_API_KEY:
-        logger.error("[OpenRouter] ERROR: OPENROUTER_API_KEY tidak dikonfigurasi di berkas .env!")
+    """Fungsi helper untuk menembak API Groq."""
+    if not groq_client:
+        logger.error("[Groq] ERROR: GROQ_API_KEY tidak dikonfigurasi di berkas .env!")
         return None
         
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:8001",
-        "X-Title": "PDAM Purbalingga Chatbot"
-    }
-    payload = {
-        "model": OPENROUTER_MODEL,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.65,
-    }
     try:
-        logger.info(f"[OpenRouter] Memanggil model '{OPENROUTER_MODEL}'...")
-        response = requests.post(url, json=payload, headers=headers, timeout=120)
-        response.raise_for_status()
-        data = response.json()
-        choices = data.get("choices", [])
-        if choices:
-            result = choices[0].get("message", {}).get("content", "").strip()
-            logger.info(f"[OpenRouter] Respons OK ({len(result)} karakter)")
-            return result
-        else:
-            logger.warning("[OpenRouter] Model mengembalikan pilihan kosong!")
-            return None
-    except requests.exceptions.HTTPError as http_err:
-        error_detail = http_err.response.text
-        try:
-            error_json = http_err.response.json()
-            error_detail = json.dumps(error_json, indent=2)
-        except Exception:
-            pass
-        logger.error(f"[OpenRouter] HTTP ERROR {http_err.response.status_code}:\n{error_detail}")
-        return None
+        logger.info(f"[Groq] Memanggil model '{GROQ_MODEL}'...")
+        response = groq_client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.65,
+        )
+        
+        result = response.choices[0].message.content.strip()
+        logger.info(f"[Groq] Respons OK ({len(result)} karakter)")
+        return result
+        
     except Exception as e:
-        logger.error(f"[OpenRouter] Gagal memanggil API: {e}.")
+        logger.error(f"[Groq] Gagal memanggil API: {e}")
         return None
 
 

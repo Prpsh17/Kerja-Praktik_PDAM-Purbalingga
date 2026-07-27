@@ -6,3 +6,4 @@ requests>=2.31.0
 python-dotenv>=1.0.0
 mysql-connector-python>=8.0.33
 python-telegram-bot>=20.3
+groq==0.8.0

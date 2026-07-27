@@ -66,11 +66,21 @@ def create_complaint(name: str, address: str, phone: str, content: str, inputed_
     try:
         cursor = connection.cursor()
         
-        # 1. Generate unique ticket number: DDMMYYYY-randint(100, 999)
+        # 1. Generate sequential ticket number: DDMMYYYY-NNN
+        #    Hitung berapa keluhan yang sudah masuk hari ini,
+        #    lalu jadikan nomor urut berikutnya (zero-padded 3 digit).
         from datetime import datetime
-        import random
         date_str = datetime.now().strftime("%d%m%Y")
-        ticket_number = f"{date_str}-{random.randint(100, 999)}"
+        count_query = """
+            SELECT COUNT(*) as total
+            FROM customercomplaint
+            WHERE DATE(DateCompliant) = CURDATE()
+        """
+        cursor.execute(count_query)
+        count_result = cursor.fetchone()
+        daily_count = count_result[0] if count_result else 0
+        sequence = str(daily_count + 1).zfill(3)
+        ticket_number = f"{date_str}-{sequence}"
         
         # 2. Insert complaint
         query = """

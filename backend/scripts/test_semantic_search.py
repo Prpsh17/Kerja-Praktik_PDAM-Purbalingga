@@ -1,7 +1,11 @@
 # File: backend/test_semantic_search.py
 import os
+import sys
 import json
 from dotenv import load_dotenv
+
+# Tambahkan direktori parent (backend) ke sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Paksa environment agar terbaca
 load_dotenv()
@@ -18,7 +22,8 @@ def test_search():
         "air di rumah saya keruh banget nih cokelat warnanya",
         "kantor pdam purbalingga buka hari apa aja?",
         "gimana cara melacak keluhan saya?",
-        "pdam purbalingga lokasinya ada di mana ya?"
+        "pdam purbalingga lokasinya ada di mana ya?",
+        "pdam buka dari jam berapa y"
     ]
     
     print("\n--- MENJALANKAN PENGUJIAN SEMANTIC SEARCH ---")

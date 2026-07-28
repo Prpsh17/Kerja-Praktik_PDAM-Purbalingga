@@ -50,7 +50,7 @@ FAQ_LIST = [
         )
     },
     {
-        "keywords": ["jam pelayanan", "buka kantor", "loket", "jam kerja", "operasional", "jam berapa buka", "kapan tutup", "jadwal buka"],
+        "keywords": ["jam pelayanan", "buka kantor", "loket", "jam kerja", "operasional", "jam berapa buka", "kapan tutup", "jadwal buka", "jam buka pdam", "buka jam"],
         "question": "Kapan jam operasional pelayanan kantor PDAM Purbalingga?",
         "answer": (
             "Jam Operasional Pelayanan Kantor PDAM Purbalingga adalah sebagai berikut:\n"
@@ -141,7 +141,7 @@ FAQ_LIST = [
         )
     },
     {
-        "keywords": ["tagihan melonjak", "tagihan naik", "tagihan mahal", "bengkak", "naik drastis", "mahal sekali"],
+        "keywords": ["tagihan melonjak", "tagihan naik", "tagihan mahal", "bengkak", "naik drastis", "mahal sekali", "tinggi sekali"],
         "question": "Mengapa tagihan air bulan ini melonjak tinggi secara drastis?",
         "answer": (
             "Lonjakan tagihan air umumnya disebabkan oleh beberapa faktor berikut:\n"

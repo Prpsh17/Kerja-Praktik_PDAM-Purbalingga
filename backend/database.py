@@ -1,22 +1,36 @@
 import mysql.connector
-from mysql.connector import Error
+from mysql.connector import Error, pooling
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# Inisialisasi Connection Pool (dieksekusi sekali saat modul dimuat)
+try:
+    db_pool = pooling.MySQLConnectionPool(
+        pool_name="pdam_pool",
+        pool_size=10,
+        pool_reset_session=True,
+        host=os.getenv("DB_HOST", "localhost"),
+        port=int(os.getenv("DB_PORT", 3307)),
+        user=os.getenv("DB_USER", "root"),
+        password=os.getenv("DB_PASSWORD", ""),
+        database=os.getenv("DB_NAME", "pdam_billing")
+    )
+except Error as e:
+    print(f"Error initializing MySQL Connection Pool: {e}")
+    db_pool = None
+
 def get_db_connection():
+    if not db_pool:
+        print("Database pool is not initialized.")
+        return None
     try:
-        connection = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "localhost"),
-            port=int(os.getenv("DB_PORT", 3307)),
-            user=os.getenv("DB_USER", "root"),
-            password=os.getenv("DB_PASSWORD", ""),
-            database=os.getenv("DB_NAME", "pdam_billing")
-        )
+        # Mengambil koneksi dari pool
+        connection = db_pool.get_connection()
         return connection
     except Error as e:
-        print(f"Error connecting to MySQL: {e}")
+        print(f"Error getting connection from pool: {e}")
         return None
 
 def get_unpaid_billing(nolangg: str):

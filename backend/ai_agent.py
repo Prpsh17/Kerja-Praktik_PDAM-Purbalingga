@@ -91,15 +91,6 @@ def get_openrouter_embedding(text: str) -> list:
         return []
 
 
-def clean_chinese_characters(text: str) -> str:
-    """Hapus semua karakter Hanzi/Mandarin dari teks jika AI mengalami kebocoran bahasa."""
-    import re
-    # Menghapus karakter dalam range Unicode CJK Unified Ideographs
-    cleaned = re.sub(r'[\u4e00-\u9fff]+', '', text)
-    # Bersihkan spasi ganda horizontal saja (tanpa menghapus enter/newline \n)
-    return re.sub(r'[ \t]+', ' ', cleaned).strip()
-
-
 def check_thank_you(message: str) -> str:
     """Mengecek apakah user mengucapkan terima kasih, jika iya, return jawaban hardcode."""
     msg = message.lower().strip()
@@ -235,9 +226,6 @@ Output: {"intent": "FAQ", "nolangg": null}
     
     if text_response is None:
         return {"intent": "ERROR", "reply": "Maaf, sistem kecerdasan buatan (OpenRouter) sedang bermasalah atau belum dikonfigurasi."}
-
-    # Bersihkan response dari karakter Mandarin jika bocor
-    text_response = clean_chinese_characters(text_response)
 
     # Bersihkan markdown json jika AI tetap memberikannya
     if text_response.startswith("```json"):
@@ -450,7 +438,6 @@ def generate_general_response(user_message: str, intent: str) -> str:
         }
         return fallbacks.get(intent, "Maaf, terjadi kesalahan sistem. Silakan coba lagi.")
 
-    response = clean_chinese_characters(response)
     return response
 
 def cosine_similarity(v1, v2):
@@ -521,18 +508,28 @@ def get_matching_faq(user_message: str):
         
     user_msg_lower = user_message.lower().strip()
     
-    # 0. Cek kecocokan keyword secara persis terlebih dahulu (Menghemat API & Menghindari False Positive)
+    # 0. Cek kecocokan keyword berbasis kemunculan semua kata (All-Words Match)
     exact_keyword_match = None
-    max_keyword_len = 0
+    max_keyword_word_count = 0
     import re
+    
+    # Pisahkan pesan user menjadi set kata (hanya huruf dan angka)
+    user_words = set(re.findall(r'\b\w+\b', user_msg_lower))
+    
     for item in FAQ_CACHE:
         for keyword in item["keywords"]:
             kw = keyword.lower().strip()
-            # Hanya cocokkan jika kata kunci berupa kata penuh di dalam pesan user
-            pattern = r'\b' + re.escape(kw) + r'\b'
-            if re.search(pattern, user_msg_lower):
-                if len(kw) > max_keyword_len:
-                    max_keyword_len = len(kw)
+            # Pisahkan keyword menjadi set kata
+            kw_words = set(re.findall(r'\b\w+\b', kw))
+            
+            # Lewati jika keyword kosong
+            if not kw_words:
+                continue
+                
+            # Jika SEMUA kata dalam keyword ada di dalam pesan user
+            if kw_words.issubset(user_words):
+                if len(kw_words) > max_keyword_word_count:
+                    max_keyword_word_count = len(kw_words)
                     exact_keyword_match = item
                     
     if exact_keyword_match:
@@ -555,29 +552,26 @@ def get_matching_faq(user_message: str):
                             max_sim = sim
                             best_match = item
                 
-                # Naikkan ambang batas (threshold) dari 0.50 ke 0.60 agar tidak terjadi kecocokan salah
-                if max_sim >= 0.60:
+                # Gunakan threshold 0.50 (lebih toleran untuk bahasa casual)
+                if max_sim >= 0.50:
+                    logger.info(f"[get_matching_faq] Kecocokan semantik ditemukan (Skor: {max_sim:.2f})")
                     return best_match
         except Exception as e:
             logger.error(f"[get_matching_faq] Error saat semantic search: {e}")
 
-    # 2. Fallback: Keyword Matching + SequenceMatcher (jika API embedding gagal atau data tidak ada embedding)
-    logger.info("[get_matching_faq] Menggunakan fallback Keyword/SequenceMatcher.")
+    # 2. Fallback: SequenceMatcher (hanya jika API embedding gagal)
+    # Turunkan prioritasnya agar tidak mudah membajak FAQ lain
+    logger.info("[get_matching_faq] Menggunakan fallback SequenceMatcher.")
     best_match = None
     max_score = 0
     from difflib import SequenceMatcher
     
     for item in FAQ_CACHE:
-        keyword_score = 0
-        for keyword in item["keywords"]:
-            if keyword.lower() in user_msg_lower:
-                keyword_score += 2.0
-        
         ratio = SequenceMatcher(None, user_msg_lower, item["question"].lower()).ratio()
-        total_score = keyword_score + (ratio * 1.5)
         
-        if total_score > max_score and total_score > 0.5:
-            max_score = total_score
+        # Harus sangat mirip (ratio > 0.65) agar tidak terjadi false positive liar
+        if ratio > max_score and ratio > 0.65:
+            max_score = ratio
             best_match = item
             
     return best_match
@@ -621,7 +615,7 @@ def generate_faq_response(user_message: str) -> str:
                 "Anda dapat menanyakan hal lain seputar pasang baru, tarif air, balik nama, atau jam pelayanan kantor."
             )
             
-    return clean_chinese_characters(response)
+    return response
 
 def generate_billing_response(user_message: str, billing_data: dict, nolangg: str):
     """
@@ -652,7 +646,7 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
         )
         response = call_llm(prompt=prompt, system_prompt=system_prompt)
         if response:
-            return clean_chinese_characters(response)
+            return response
         return (
             f"Maaf, Nomor Pelanggan {nolangg} tidak ditemukan di sistem kami. 😔\n"
             "Harap periksa kembali nomor Anda atau hubungi kantor PDAM Purbalingga terdekat."
@@ -683,7 +677,7 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
         )
         response = call_llm(prompt=prompt, system_prompt=system_prompt)
         if response:
-            return clean_chinese_characters(response)
+            return response
         return (
             f"Hore! 🎉 Tidak ada tagihan tertunggak untuk Bapak/Ibu {nama} "
             f"(Nomor: {nolangg}). Tagihan Anda sudah lunas! Terima kasih. 🙏"
@@ -755,9 +749,6 @@ def generate_billing_response(user_message: str, billing_data: dict, nolangg: st
         reply += f"💰 Total Tagihan: Rp {total_format}\n\n"
         reply += "Silakan lakukan pembayaran melalui ATM, Alfamart, atau loket resmi terdekat. Terima kasih! 🙏"
         return reply
-
-    # Bersihkan karakter mandarin jika tergenerasi secara tidak sengaja
-    response = clean_chinese_characters(response)
 
     logger.info(f"[generate_billing_response] ✅ AI berhasil generate respons ({len(response)} karakter)")
     return response

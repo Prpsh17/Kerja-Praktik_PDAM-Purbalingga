@@ -47,14 +47,14 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_name = update.effective_user.first_name or "Pelanggan"
     welcome_text = (
         f"👋 Halo, {user_name}!\n\n"
-        "Saya adalah *Asisten Virtual PDAM Purbalingga* 💧\n\n"
+        "Saya adalah Asisten Virtual PDAM Purbalingga 💧\n\n"
         "Saya bisa membantu Anda:\n"
         "• Cek tagihan air berdasarkan nomor pelanggan\n"
         "• Informasi cara pembayaran tagihan\n\n"
-        "• *Laporkan Keluhan Pelanggan* (ketik /lapor)\n\n"
+        "• Laporkan Keluhan Pelanggan (ketik /lapor)\n\n"
         "Ketik /help untuk informasi lebih lanjut\n\n"
         "Silakan kirim pesan Anda, atau ketik nomor pelanggan langsung untuk cek tagihan.\n\n"
-        "_Contoh: \"cek tagihan 01010007\"_"
+        "Contoh: \"cek tagihan 01010007\""
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
@@ -66,11 +66,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Menampilkan panduan penggunaan bot."""
     help_text = (
         "📋 *Panduan Penggunaan Bot PDAM*\n\n"
-        "*Perintah tersedia:*\n"
+        "Perintah tersedia:\n"
         "/start — Memulai bot & menampilkan sambutan\n"
         "/help  — Menampilkan panduan ini\n\n"
         "/lapor — Laporkan keluhan pelanggan (step-by-step)\n\n"
-        "*Cara cek tagihan:*\n"
+        "Cara cek tagihan:\n"
         "Ketik pesan seperti salah satu contoh berikut:\n"
         "• `cek tagihan 01010007`\n"
         "• `tagihan saya nomor 01010007`\n"

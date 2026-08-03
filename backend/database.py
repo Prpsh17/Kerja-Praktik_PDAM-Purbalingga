@@ -1,9 +1,15 @@
 import mysql.connector
 from mysql.connector import Error, pooling
 import os
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# ─────────────────────────────────────────────
+# Logger (celah #7: ganti semua print() ke logger)
+# ─────────────────────────────────────────────
+logger = logging.getLogger(__name__)
 
 # Inisialisasi Connection Pool (dieksekusi sekali saat modul dimuat)
 try:
@@ -17,38 +23,42 @@ try:
         password=os.getenv("DB_PASSWORD", ""),
         database=os.getenv("DB_NAME", "pdam_billing")
     )
+    logger.info("MySQL Connection Pool berhasil diinisialisasi.")
 except Error as e:
-    print(f"Error initializing MySQL Connection Pool: {e}")
+    logger.error(f"Error initializing MySQL Connection Pool: {e}")
     db_pool = None
 
 def get_db_connection():
     if not db_pool:
-        print("Database pool is not initialized.")
+        logger.error("Database pool is not initialized.")
         return None
     try:
-        # Mengambil koneksi dari pool
         connection = db_pool.get_connection()
         return connection
     except Error as e:
-        print(f"Error getting connection from pool: {e}")
+        logger.error(f"Error getting connection from pool: {e}")
         return None
 
 def get_unpaid_billing(nolangg: str):
     connection = get_db_connection()
     if not connection:
         return None
-        
+
     try:
         cursor = connection.cursor(dictionary=True)
-        
+
         # 1. Cek apakah nomor pelanggan terdaftar
         check_user_query = "SELECT nama FROM tbl_pelanggan WHERE nolangg = %s"
         cursor.execute(check_user_query, (nolangg,))
         user = cursor.fetchone()
-        
+
         if not user:
-            return {"status": "not_found", "message": f"Nomor Pelanggan {nolangg} tidak ditemukan di sistem kami silahkan cek kembali nomer pelanggan anda.", "data": []}
-            
+            return {
+                "status": "not_found",
+                "message": f"Nomor Pelanggan {nolangg} tidak ditemukan di sistem kami silahkan cek kembali nomer pelanggan anda.",
+                "data": []
+            }
+
         # 2. Jika pelanggan ada, cek tagihan yang belum lunas
         query = """
             SELECT p.nama, p.alamat, b.PERIODE, b.M3, b.TOTAL, b.DENDA 
@@ -58,15 +68,19 @@ def get_unpaid_billing(nolangg: str):
         """
         cursor.execute(query, (nolangg,))
         result = cursor.fetchall()
-        
-        # Format the result nicely
+
         if not result:
-            return {"status": "success", "message": f"Tidak ada tagihan tertunggak untuk nomor pelanggan {nolangg}.", "data": [], "nama": user["nama"]}
-            
+            return {
+                "status": "success",
+                "message": f"Tidak ada tagihan tertunggak untuk nomor pelanggan {nolangg}.",
+                "data": [],
+                "nama": user["nama"]
+            }
+
         return {"status": "success", "data": result}
-        
+
     except Error as e:
-        print(f"Error executing query: {e}")
+        logger.error(f"Error executing get_unpaid_billing query: {e}")
         return {"status": "error", "message": "Terjadi kesalahan sistem saat mengambil data tagihan."}
     finally:
         if connection.is_connected():
@@ -78,25 +92,31 @@ def create_complaint(name: str, address: str, phone: str, content: str, inputed_
     if not connection:
         return None
     try:
+        # ─────────────────────────────────────────────
+        # Celah #10: Fix race condition ticket number
+        # Gunakan transaksi + SELECT ... FOR UPDATE untuk mencegah
+        # dua request bersamaan mendapat nomor tiket yang sama.
+        # ─────────────────────────────────────────────
+        connection.start_transaction()
         cursor = connection.cursor()
-        
-        # 1. Generate sequential ticket number: DDMMYYYY-NNN
-        #    Hitung berapa keluhan yang sudah masuk hari ini,
-        #    lalu jadikan nomor urut berikutnya (zero-padded 3 digit).
+
         from datetime import datetime
         date_str = datetime.now().strftime("%d%m%Y")
+
+        # Lock baris yang akan dihitung agar request lain menunggu
         count_query = """
             SELECT COUNT(*) as total
             FROM customercomplaint
             WHERE DATE(DateCompliant) = CURDATE()
+            FOR UPDATE
         """
         cursor.execute(count_query)
         count_result = cursor.fetchone()
         daily_count = count_result[0] if count_result else 0
         sequence = str(daily_count + 1).zfill(3)
         ticket_number = f"{date_str}-{sequence}"
-        
-        # 2. Insert complaint
+
+        # Insert complaint
         query = """
             INSERT INTO customercomplaint (
                 DateCompliant, Number, ComplianerName, ComplianerAddress, PhoneNumber, 
@@ -110,9 +130,15 @@ def create_complaint(name: str, address: str, phone: str, content: str, inputed_
         """
         cursor.execute(query, (ticket_number, name, address, phone, content, inputed_by))
         connection.commit()
+        logger.info(f"Complaint berhasil dibuat dengan nomor tiket: {ticket_number}")
         return ticket_number
+
     except Error as e:
-        print(f"Error creating complaint: {e}")
+        logger.error(f"Error creating complaint: {e}")
+        try:
+            connection.rollback()
+        except Exception:
+            pass
         return None
     finally:
         if connection.is_connected():
@@ -135,7 +161,7 @@ def get_complaint_status(ticket_number: str):
         result = cursor.fetchone()
         return result
     except Error as e:
-        print(f"Error getting complaint status: {e}")
+        logger.error(f"Error getting complaint status: {e}")
         return None
     finally:
         if connection.is_connected():
@@ -153,7 +179,7 @@ def get_all_faqs():
         result = cursor.fetchall()
         return result
     except Error as e:
-        print(f"Error fetching FAQs: {e}")
+        logger.error(f"Error fetching FAQs: {e}")
         return None
     finally:
         if connection.is_connected():
@@ -174,7 +200,7 @@ def insert_faq_with_embedding(question: str, answer: str, keywords: str, embeddi
         connection.commit()
         return True
     except Error as e:
-        print(f"Error inserting FAQ: {e}")
+        logger.error(f"Error inserting FAQ: {e}")
         return False
     finally:
         if connection.is_connected():
@@ -191,10 +217,9 @@ def truncate_faqs():
         connection.commit()
         return True
     except Error as e:
-        print(f"Error truncating FAQs: {e}")
+        logger.error(f"Error truncating FAQs: {e}")
         return False
     finally:
         if connection.is_connected():
             cursor.close()
             connection.close()
-
